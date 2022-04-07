@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Any, Dict, List
+from typing import Optional, Callable, Any, Dict, List, TYPE_CHECKING
 import logging
 
 from fastapi import FastAPI, WebSocket
@@ -6,7 +6,8 @@ from fastapi.exceptions import HTTPException
 from starlette import status
 from starlette.endpoints import WebSocketEndpoint
 from pydantic import BaseModel, ValidationError
-from pydantic.error_wrappers import ErrorDict
+if TYPE_CHECKING:
+    from pydantic.error_wrappers import ErrorDict
 
 app = FastAPI()
 
@@ -52,36 +53,36 @@ class WSApp(WebSocketEndpoint):
         assert event not in ['connect', 'disconnect', 'receive'], f'{event} is reserved'
         if method is None:
             del self.handlers[event]
-            logging.debug(f'Clearing handler for {event}')
+            logging.debug('Clearing handler for %s', event)
         elif event in self.handlers:
-            logging.warning(f"Overwriting handler for {event} with {method}")
+            logging.warning("Overwriting handler for %s with %s", event, method)
         else:
             self.handlers[event] = method
 
     async def on_receive(self, websocket: WebSocket, data: Any) -> None:
         try:
             msg = WebsocketMessage(**data)
-        except ValidationError as e:
-            return await send_exception(websocket, e)
+        except ValidationError as exc:
+            return await send_exception(websocket, exc)
 
         if msg.type not in self.handlers:
             raise RuntimeError(f'invalid event "{msg.type}"')
-        else:
-            logging.debug(f"Handler called for {msg.type=} with {msg.data=}")
-            # todo validate incoming data
-            try:
-                response = await self.handlers[msg.type](websocket, msg.data)
-            except HTTPException as e: #TODO also accept WebsocketException
-                await send_exception(websocket, e)
-            except Exception as e:
-                #TODO remove this! don't send all exceptions to clients
-                await send_exception(websocket, e)
-                await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
-                raise e
 
-            if response is not None:
-                #TODO validate response
-                websocket.send_json(response)
+        logging.debug("Handler called for %s with %s", msg.type, msg.data)
+        # todo validate incoming data
+        try:
+            response = await self.handlers[msg.type](websocket, msg.data)
+        except HTTPException as exc: #TODO also accept WebsocketException
+            await send_exception(websocket, exc)
+        except Exception as exc:
+            #TODO remove this! don't send all exceptions to clients
+            await send_exception(websocket, exc)
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+            raise exc
+
+        if response is not None:
+            #TODO validate response
+            websocket.send_json(response)
 
 async def send_exception(websocket: WebSocket, exc: Exception) -> None:
     errors: List[Dict[str,Any]] | List[ErrorDict]
@@ -100,6 +101,8 @@ manager = ConnectionManager()
 
 @app.websocket_route("/ws/{client_id:int}")
 class MyWSApp(WSApp):
+    client_id = None
+
     async def on_connect(self, websocket: WebSocket) -> None:
         self.client_id = websocket.path_params['client_id']
         await manager.connect(websocket)
