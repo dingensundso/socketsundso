@@ -1,13 +1,14 @@
-from typing import Optional, Callable, Any, Dict, List, TYPE_CHECKING
+from typing import Callable, Any, Dict, List, TYPE_CHECKING
 import logging
 
 from fastapi import FastAPI, WebSocket
 from fastapi.exceptions import HTTPException
 from starlette import status
-from starlette.endpoints import WebSocketEndpoint
 from pydantic import BaseModel, ValidationError
 if TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
+
+from wshandler.endpoints import WebSocketEndpoint
 
 app = FastAPI()
 
@@ -59,11 +60,11 @@ class WebSocketHandlingEndpoint(WebSocketEndpoint):
         else:
             self.handlers[event] = method
 
-    async def on_receive(self, websocket: WebSocket, data: Any) -> None:
+    async def on_receive(self, data: Any) -> None:
         try:
             msg = WebsocketMessage(**data)
         except ValidationError as exc:
-            return await send_exception(websocket, exc)
+            return await self.send_exception(exc)
 
         if msg.type not in self.handlers:
             raise RuntimeError(f'invalid event "{msg.type}"')
@@ -71,31 +72,31 @@ class WebSocketHandlingEndpoint(WebSocketEndpoint):
         logging.debug("Handler called for %s with %s", msg.type, msg.data)
         # todo validate incoming data
         try:
-            response = await self.handlers[msg.type](websocket, msg.data)
+            response = await self.handlers[msg.type](msg.data)
         except HTTPException as exc: #TODO also accept WebsocketException
-            await send_exception(websocket, exc)
+            await self.send_exception(exc)
         except Exception as exc:
             #TODO remove this! don't send all exceptions to clients
-            await send_exception(websocket, exc)
-            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+            await self.send_exception(exc)
+            await self.websocket.close(code=status.WS_1011_INTERNAL_ERROR)
             raise exc
 
         if response is not None:
             #TODO validate response
-            websocket.send_json(response)
+            self.websocket.send_json(response)
 
-async def send_exception(websocket: WebSocket, exc: Exception) -> None:
-    errors: List[Dict[str,Any]] | List[ErrorDict]
-    if isinstance(exc, ValidationError):
-        errors = exc.errors()
-    elif isinstance(exc, HTTPException):
-        errors = [{'msg': exc.detail, 'status_code': exc.status_code, 'type': type(exc).__name__}]
-    #elif isinstance(exc, WebsocketException):
-        #TODO
-    else:
-        errors = [{'msg': str(exc), 'type': type(exc).__name__}]
+    async def send_exception(self, exc: Exception) -> None:
+        errors: List[Dict[str,Any]] | List[ErrorDict]
+        if isinstance(exc, ValidationError):
+            errors = exc.errors()
+        elif isinstance(exc, HTTPException):
+            errors = [{'msg': exc.detail, 'status_code': exc.status_code, 'type': type(exc).__name__}]
+        #elif isinstance(exc, WebsocketException):
+            #TODO
+        else:
+            errors = [{'msg': str(exc), 'type': type(exc).__name__}]
 
-    await websocket.send_json({'errors': errors})
+        await self.websocket.send_json({'errors': errors})
 
 manager = ConnectionManager()
 
@@ -103,14 +104,14 @@ manager = ConnectionManager()
 class MyWSApp(WebSocketHandlingEndpoint):
     client_id = None
 
-    async def on_connect(self, websocket: WebSocket) -> None:
-        self.client_id = websocket.path_params['client_id']
-        await manager.connect(websocket)
+    async def on_connect(self) -> None:
+        self.client_id = self.websocket.path_params['client_id']
+        await manager.connect(self.websocket)
         await manager.broadcast(f"#{self.client_id} joined")
 
-    async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
-        manager.disconnect(websocket)
+    async def on_disconnect(self, close_code: int) -> None:
+        manager.disconnect(self.websocket)
         await manager.broadcast(f'Client #{self.client_id} left the chat')
 
-    async def on_message(self, websocket: WebSocket, data: str) -> None:
+    async def on_message(self, data: str) -> None:
         await manager.broadcast(f"#{self.client_id}: " + data)
