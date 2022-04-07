@@ -27,13 +27,10 @@ class ConnectionManager:
         for connection in self.active_connections:
             await connection.send_text(message)
 
-manager = ConnectionManager()
-
 class WebsocketMessage(BaseModel):
     type: str
     data: Any
 
-@app.websocket_route("/ws/{client_id:int}")
 class WSApp(WebSocketEndpoint):
     encoding = 'json'
 
@@ -48,24 +45,17 @@ class WSApp(WebSocketEndpoint):
                 assert callable(method), 'handler methods starting with on_ have to be callable'
                 self.set_handler(methodname[3:], getattr(self, methodname))
 
-
     def set_handler(self, event: str, method: Callable) -> None:
         """Set a handler for event"""
         #TODO build enum for validation
-        if event in ['connect', 'disconnect', 'receive']:
-            raise ValueError(f'{event} is reserved')
-        elif method == None:
+        assert event not in ['connect', 'disconnect', 'receive'], f'{event} is reserved'
+        if method is None:
             del self.handlers[event]
             logging.debug(f'Clearing handler for {event}')
         elif event in self.handlers:
             logging.warning(f"Overwriting handler for {event} with {method}")
         else:
             self.handlers[event] = method
-
-    async def on_connect(self, websocket):
-        self.client_id = websocket.path_params['client_id']
-        await manager.connect(websocket)
-        await manager.broadcast(f"#{self.client_id} joined")
 
     async def on_receive(self, websocket, data):
         try:
@@ -89,17 +79,7 @@ class WSApp(WebSocketEndpoint):
                 raise e
 
             if response is not None:
-                # validate response
-                if isinstance(response, Broadcast):
-                    manager.broadcast()
-
-
-    async def on_disconnect(self, websocket, close_code):
-        manager.disconnect(websocket)
-        await manager.broadcast(f'Client #{self.client_id} left the chat')
-
-    async def on_message(self, websocket, data):
-        await manager.broadcast(f"#{self.client_id}: " + data)
+                websocket.send_json(response)
 
 async def send_exception(websocket, exc):
     if isinstance(exc, ValidationError):
@@ -112,3 +92,19 @@ async def send_exception(websocket, exc):
         errors = [{'msg': str(exc), 'type': type(exc).__name__}]
 
     await websocket.send_json({'errors': errors})
+
+manager = ConnectionManager()
+
+@app.websocket_route("/ws/{client_id:int}")
+class MyWSApp(WSApp):
+    async def on_connect(self, websocket):
+        self.client_id = websocket.path_params['client_id']
+        await manager.connect(websocket)
+        await manager.broadcast(f"#{self.client_id} joined")
+
+    async def on_disconnect(self, websocket, close_code):
+        manager.disconnect(websocket)
+        await manager.broadcast(f'Client #{self.client_id} left the chat')
+
+    async def on_message(self, websocket, data):
+        await manager.broadcast(f"#{self.client_id}: " + data)
