@@ -33,7 +33,7 @@ class WebsocketMessage(BaseModel):
     type: str
     data: Any
 
-class WSApp(WebSocketEndpoint):
+class WebSocketHandlingEndpoint(WebSocketEndpoint):
     encoding = 'json'
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -100,7 +100,7 @@ async def send_exception(websocket: WebSocket, exc: Exception) -> None:
 manager = ConnectionManager()
 
 @app.websocket_route("/ws/{client_id:int}")
-class MyWSApp(WSApp):
+class MyWSApp(WebSocketHandlingEndpoint):
     client_id = None
 
     async def on_connect(self, websocket: WebSocket) -> None:
