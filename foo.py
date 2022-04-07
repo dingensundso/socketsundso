@@ -2,6 +2,7 @@ from typing import Optional, Callable, Any
 import logging
 
 from fastapi import FastAPI, WebSocket
+from fastapi.exceptions import HTTPException
 from starlette.endpoints import WebSocketEndpoint
 from pydantic import BaseModel, ValidationError
 
@@ -31,7 +32,7 @@ class WebsocketMessage(BaseModel):
     type: str
     data: Any
 
-@app.websocket_route("/ws/{client_id}")
+@app.websocket_route("/ws/{client_id:int}")
 class WSApp(WebSocketEndpoint):
     encoding = 'json'
 
@@ -69,14 +70,26 @@ class WSApp(WebSocketEndpoint):
         try:
             msg = WebsocketMessage(**data)
         except ValidationError as e:
-            await websocket.send_json(e.json())
-            return
+            return await send_exception(websocket, e)
 
         if msg.type not in self.handlers:
             raise RuntimeError(f'invalid event "{msg.type}"')
         else:
             logging.debug(f"Handler called for {msg.type=} with {msg.data=}")
-            return await self.handlers[msg.type](websocket, msg.data)
+            # todo validate incoming data
+            try:
+                response = await self.handlers[msg.type](websocket, msg.data)
+            except HTTPException as e: #TODO also accept WebsocketException
+                await send_exception(websocket, e)
+            except Exception as e:
+                #TODO remove this! don't send all exceptions to clients
+                await send_exception(websocket, e)
+                raise e
+
+            if response is not None:
+                # validate response
+                if isinstance(response, Broadcast):
+                    manager.broadcast()
 
 
     async def on_disconnect(self, websocket, close_code):
@@ -85,3 +98,15 @@ class WSApp(WebSocketEndpoint):
 
     async def on_message(self, websocket, data):
         await manager.broadcast(f"#{self.client_id}: " + data)
+
+async def send_exception(websocket, exc):
+    if isinstance(exc, ValidationError):
+        errors = exc.errors()
+    elif isinstance(exc, HTTPException):
+        errors = [{'msg': exc.detail, 'status_code': exc.status_code, 'type': type(exc).__name__}]
+    #elif isinstance(exc, WebsocketException):
+        #TODO
+    else:
+        errors = [{'msg': str(exc), 'type': type(exc).__name__}]
+
+    await websocket.send_json({'errors': errors})
