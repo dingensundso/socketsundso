@@ -3,6 +3,7 @@ import logging
 
 from fastapi import FastAPI, WebSocket
 from fastapi.exceptions import HTTPException
+from starlette import status
 from starlette.endpoints import WebSocketEndpoint
 from pydantic import BaseModel, ValidationError
 
@@ -84,6 +85,7 @@ class WSApp(WebSocketEndpoint):
             except Exception as e:
                 #TODO remove this! don't send all exceptions to clients
                 await send_exception(websocket, e)
+                await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
                 raise e
 
             if response is not None:
