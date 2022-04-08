@@ -92,24 +92,23 @@ class WebSocketHandlingEndpoint:
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
 
-    def set_handler(self, event: str | None = None, handler: typing.Callable | Handler | None = None) -> None:
+    def set_handler(
+            self,
+            event: str,
+            method: typing.Callable,
+            ) -> None:
         """
         Register a handler for event
         """
-        #TODO build enum for validation
         assert event not in ['connect', 'disconnect', 'receive'], f'{event} is reserved'
-        assert event is not None or isinstance(handler, Handler), 'no event specified'
 
-        if event is None:
-            event = handler.event
-
-        if handler is None:
+        if method is None:
             del self.handlers[event]
             logging.debug('Clearing handler for %s', event)
         elif event in self.handlers:
-            logging.warning("Overwriting handler for %s with %s", event, handler)
+            logging.warning("Overwriting handler for %s with %s", event, method)
         else:
-            self.handlers[event] = handler if isinstance(handler, Handler) else Handler(event, handler)
+            self.handlers[event] = Handler(event, method)
 
         if hasattr(self, 'event_message_model'):
             self.__update_event_message_model()
