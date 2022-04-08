@@ -24,8 +24,16 @@ class Handler:
         return await self.method(data)
 
 def handler(event: str) -> typing.Callable:
+    """
+    Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
+    Declares a method as handler for :param:`event`
+
+    Technical Note: this decorator just sets some attributes on the function. The registration as
+    handler happens in :meth:`WebSocketHandlingEndpoint.__init__`
+    """
     def decorator(func: typing.Callable) -> typing.Callable:
-        return Handler(event, func)
+        func.__handler_event = event
+        return func
     return decorator
 
 class WebSocketHandlingEndpoint:
@@ -53,18 +61,12 @@ class WebSocketHandlingEndpoint:
         self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
         self.handlers: typing.Dict[str, Handler] = {}
 
-
         # register all methods starting with on_ as handlers
         for methodname in dir(self):
             handler = getattr(self, methodname)
 
-            if isinstance(handler, Handler):
-                # python is weird. Since the Handler was created before instantiaion of this class
-                # the method is won't be bound. So we bind it here.
-                if not hasattr(handler.method, '__self__'):
-                    handler.method = handler.method.__get__(self, self.__class__)
-
-                self.set_handler(handler=handler)
+            if hasattr(handler, '__handler_event'):
+                self.set_handler(getattr(handler, '__handler_event'), handler)
             elif methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect']:
                 assert callable(handler), 'handler methods starting with on_ have to be callable'
