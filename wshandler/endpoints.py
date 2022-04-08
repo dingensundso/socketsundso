@@ -2,15 +2,15 @@
 import typing
 import json
 import logging
+from enum import Enum
 
 from starlette import status
 from starlette.types import Receive, Scope, Send
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
-from pydantic import ValidationError
+from pydantic import ValidationError, create_model
 
 from .models import WebsocketEventMessage
-from .exceptions import EventNotFound
 
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
@@ -70,6 +70,15 @@ class WebSocketHandlingEndpoint:
                 assert callable(handler), 'handler methods starting with on_ have to be callable'
                 self.set_handler(methodname[3:], handler)
 
+        self.__update_event_message_model()
+
+    def __update_event_message_model(self) -> None:
+        self.event_message_model = create_model(
+            'WebsocketEventMessage',
+            type=(Enum('type', [(event, event) for event in self.handlers]), ...),
+            __base__=WebsocketEventMessage
+        )
+
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
 
@@ -92,6 +101,9 @@ class WebSocketHandlingEndpoint:
         else:
             self.handlers[event] = handler if isinstance(handler, Handler) else Handler(event, handler)
 
+        if hasattr(self, 'event_message_model'):
+            self.__update_event_message_model()
+
     async def dispatch(self) -> None:
         """
         Handles the lifecycle of a :class:`WebSocket` connection and calls :meth:`on_connect`,
@@ -111,7 +123,7 @@ class WebSocketHandlingEndpoint:
             while True:
                 try:
                     data = await self.websocket.receive_json()
-                    msg = WebsocketEventMessage(**data)
+                    msg = self.event_message_model(**data)
                 except json.decoder.JSONDecodeError as exc:
                     await self.websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                     raise RuntimeError("Malformed JSON data received.") from exc
@@ -119,17 +131,17 @@ class WebSocketHandlingEndpoint:
                     await self.send_exception(exc)
                 except WebSocketDisconnect as exc:
                     close_code = exc.code
-
-                try:
-                    await self.handle(msg)
-                except WebSocketDisconnect as exc:
-                    close_code = exc.code
-                except (HTTPException, EventNotFound) as exc:
-                    await self.send_exception(exc)
-                #TODO remove this! don't send all exceptions to clients
-                except Exception as exc:
-                    await self.send_exception(exc)
-                    raise exc
+                else:
+                    try:
+                        await self.handle(msg)
+                    except WebSocketDisconnect as exc:
+                        close_code = exc.code
+                    except HTTPException as exc:
+                        await self.send_exception(exc)
+                    #TODO remove this! don't send all exceptions to clients
+                    except Exception as exc:
+                        await self.send_exception(exc)
+                        raise exc
 
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR
@@ -139,9 +151,6 @@ class WebSocketHandlingEndpoint:
 
     async def handle(self, msg: WebsocketEventMessage) -> None:
         """Calls the handler for the incoming ``msg``"""
-        if msg.type not in self.handlers:
-            raise EventNotFound(f'invalid event "{msg.type}"')
-
         logging.debug("Handler called for %s with %s", msg.type, msg.data)
 
         # todo validate incoming data
@@ -176,7 +185,8 @@ class WebSocketHandlingEndpoint:
 
     async def send_json(self, response: typing.Any) -> None:
         """Override to handle outgoing messages"""
-        return await self.websocket.send_json(response)
+        from fastapi.encoders import jsonable_encoder
+        return await self.websocket.send_json(jsonable_encoder(response))
 
     async def on_connect(self) -> None:
         """Override to handle an incoming websocket connection"""

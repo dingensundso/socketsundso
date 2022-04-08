@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI, WebSocket
 from starlette import status
 
-from wshandler.endpoints import WebSocketHandlingEndpoint
+from wshandler.endpoints import WebSocketHandlingEndpoint, handler
 
 app = FastAPI()
 
@@ -42,4 +42,11 @@ class MyWSApp(WebSocketHandlingEndpoint):
         await manager.broadcast(f'Client #{self.client_id} left the chat')
 
     async def on_message(self, data: str) -> None:
+        print('on_message')
+        await self.send_json({'msg':'received'})
         await manager.broadcast(f"#{self.client_id}: " + data)
+
+    @handler('foobar')
+    async def foobar(self, data) -> None:
+        await self.send_json({'msg':'received'})
+        await manager.broadcast("foobar")
