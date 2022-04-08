@@ -10,6 +10,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
 from .models import WebsocketEventMessage
+from .exceptions import EventNotFound
 
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
@@ -49,6 +50,10 @@ class WebSocketHandlingEndpoint:
 
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
+
+    def handler(self, method: typing.Callable, event: str):
+        self.set_handler(event, method)
+        return method
 
     def set_handler(self, event: str, method: typing.Callable) -> None:
         """Register a handler for event"""
@@ -94,7 +99,7 @@ class WebSocketHandlingEndpoint:
                     await self.handle(msg)
                 except WebSocketDisconnect as exc:
                     close_code = exc.code
-                except HTTPException as exc: #TODO also accept WebsocketException
+                except (HTTPException, EventNotFound) as exc:
                     await self.send_exception(exc)
                 #TODO remove this! don't send all exceptions to clients
                 except Exception as exc:
@@ -110,7 +115,7 @@ class WebSocketHandlingEndpoint:
     async def handle(self, msg: WebsocketEventMessage) -> None:
         """Calls the handler for the incoming ``msg``"""
         if msg.type not in self.handlers:
-            raise RuntimeError(f'invalid event "{msg.type}"')
+            raise EventNotFound(f'invalid event "{msg.type}"')
 
         logging.debug("Handler called for %s with %s", msg.type, msg.data)
 
