@@ -9,7 +9,7 @@ from pydantic import BaseModel, ValidationError
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
 
-class WebsocketMessage(BaseModel):
+class WebsocketEventMessage(BaseModel):
     type: str
     data: typing.Any
 
@@ -75,7 +75,7 @@ class WebSocketHandlingEndpoint:
 
     async def on_receive(self, data: typing.Any) -> None:
         try:
-            msg = WebsocketMessage(**data)
+            msg = WebsocketEventMessage(**data)
         except ValidationError as exc:
             return await self.send_exception(exc)
 
