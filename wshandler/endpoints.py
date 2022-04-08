@@ -14,6 +14,9 @@ class WebsocketEventMessage(BaseModel):
     type: str
     data: typing.Any
 
+class Response:
+    pass
+
 class WebSocketHandlingEndpoint:
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "websocket"
@@ -91,7 +94,10 @@ class WebSocketHandlingEndpoint:
 
         if response is not None:
             #TODO validate response
-            self.websocket.send_json(response)
+            self.send_json(response)
+
+    async def send_json(self, response: Response):
+        return await self.websocket.send_json(response)
 
     async def send_exception(self, exc: Exception) -> None:
         errors: List[Dict[str,Any]] | List[ErrorDict]
@@ -104,7 +110,7 @@ class WebSocketHandlingEndpoint:
         else:
             errors = [{'msg': str(exc), 'type': type(exc).__name__}]
 
-        await self.websocket.send_json({'errors': errors})
+        await self.send_json({'errors': errors})
 
     async def on_connect(self) -> None:
         """Override to handle an incoming websocket connection"""
