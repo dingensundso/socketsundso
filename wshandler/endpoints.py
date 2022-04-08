@@ -15,6 +15,19 @@ from .exceptions import EventNotFound
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
 
+class Handler:
+    def __init__(self, event: str, method: typing.Callable) -> None:
+        self.event = event
+        self.method = method
+
+    async def __call__(self, data: typing.Any) -> typing.Generator:
+        return await self.method(data)
+
+def handler(event: str) -> typing.Callable:
+    def decorator(func: typing.Callable) -> typing.Callable:
+        return Handler(event, func)
+    return decorator
+
 class WebSocketHandlingEndpoint:
     """
     The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
@@ -25,8 +38,8 @@ class WebSocketHandlingEndpoint:
     :meth:`dispatch` will call handlers based on the incoming :attr:`WebsocketEventMessage.type`.
     If the handler returns something it will be send to the client.
 
-    To register a handler use :meth:`set_handler` or just create a subclass and name the
-    handler on_[type] and the :meth:`__init__` function will register it automaticailly.
+    To register a handler name it on_[type] or decorate it with :meth:`handler` and the
+    :meth:`__init__` function will take care of it.
 
 
     You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
@@ -38,34 +51,46 @@ class WebSocketHandlingEndpoint:
         self.receive = receive
         self.send = send
         self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
-        self.handlers: typing.Dict[str, typing.Callable] = {}
+        self.handlers: typing.Dict[str, Handler] = {}
+
 
         # register all methods starting with on_ as handlers
         for methodname in dir(self):
-            if methodname.startswith('on_') and methodname not in \
+            handler = getattr(self, methodname)
+
+            if isinstance(handler, Handler):
+                # python is weird. Since the Handler was created before instantiaion of this class
+                # the method is won't be bound. So we bind it here.
+                if not hasattr(handler.method, '__self__'):
+                    handler.method = handler.method.__get__(self, self.__class__)
+
+                self.set_handler(handler=handler)
+            elif methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect']:
-                method = getattr(self, methodname)
-                assert callable(method), 'handler methods starting with on_ have to be callable'
-                self.set_handler(methodname[3:], getattr(self, methodname))
+                assert callable(handler), 'handler methods starting with on_ have to be callable'
+                self.set_handler(methodname[3:], handler)
 
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
 
-    def handler(self, method: typing.Callable, event: str):
-        self.set_handler(event, method)
-        return method
-
-    def set_handler(self, event: str, method: typing.Callable) -> None:
-        """Register a handler for event"""
+    def set_handler(self, event: str | None = None, handler: typing.Callable | Handler | None = None) -> None:
+        """
+        Register a handler for event
+        """
         #TODO build enum for validation
         assert event not in ['connect', 'disconnect', 'receive'], f'{event} is reserved'
-        if method is None:
+        assert event is not None or isinstance(handler, Handler), 'no event specified'
+
+        if event is None:
+            event = handler.event
+
+        if handler is None:
             del self.handlers[event]
             logging.debug('Clearing handler for %s', event)
         elif event in self.handlers:
-            logging.warning("Overwriting handler for %s with %s", event, method)
+            logging.warning("Overwriting handler for %s with %s", event, handler)
         else:
-            self.handlers[event] = method
+            self.handlers[event] = handler if isinstance(handler, Handler) else Handler(event, handler)
 
     async def dispatch(self) -> None:
         """
