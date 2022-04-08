@@ -2,7 +2,6 @@ from typing import Callable, Any, Dict, List, TYPE_CHECKING
 import logging
 
 from fastapi import FastAPI, WebSocket
-from fastapi.exceptions import HTTPException
 from starlette import status
 
 from wshandler.endpoints import WebSocketHandlingEndpoint

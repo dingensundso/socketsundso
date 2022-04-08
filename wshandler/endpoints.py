@@ -4,6 +4,7 @@ import logging
 
 from starlette import status
 from starlette.types import Message, Receive, Scope, Send
+from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ValidationError
 if typing.TYPE_CHECKING:
@@ -53,12 +54,25 @@ class WebSocketHandlingEndpoint:
             while True:
                 try:
                     data = await self.websocket.receive_json()
-                    await self.on_receive(data)
+                    msg = WebsocketEventMessage(**data)
                 except json.decoder.JSONDecodeError:
                     await self.websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                     raise RuntimeError("Malformed JSON data received.")
+                except ValidationError as exc:
+                    await self.send_exception(exc)
                 except WebSocketDisconnect as exc:
                     close_code = exc.code
+
+                try:
+                    await self.handle(msg)
+                except WebSocketDisconnect as exc:
+                    close_code = exc.code
+                except HTTPException as exc: #TODO also accept WebsocketException
+                    await self.send_exception(exc)
+                #TODO remove this! don't send all exceptions to clients
+                except Exception as exc:
+                    await self.send_exception(exc)
+                    raise exc
 
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR
@@ -66,33 +80,14 @@ class WebSocketHandlingEndpoint:
         finally:
             await self.on_disconnect(close_code)
 
-    async def on_connect(self) -> None:
-        """Override to handle an incoming websocket connection"""
-        await self.websocket.accept()
-
-    async def on_disconnect(self, close_code: int) -> None:
-        """Override to handle a disconnecting websocket"""
-
-    async def on_receive(self, data: typing.Any) -> None:
-        try:
-            msg = WebsocketEventMessage(**data)
-        except ValidationError as exc:
-            return await self.send_exception(exc)
-
+    async def handle(self, msg: WebsocketEventMessage) -> None:
         if msg.type not in self.handlers:
             raise RuntimeError(f'invalid event "{msg.type}"')
 
         logging.debug("Handler called for %s with %s", msg.type, msg.data)
+
         # todo validate incoming data
-        try:
-            response = await self.handlers[msg.type](msg.data)
-        except HTTPException as exc: #TODO also accept WebsocketException
-            await self.send_exception(exc)
-        except Exception as exc:
-            #TODO remove this! don't send all exceptions to clients
-            await self.send_exception(exc)
-            await self.websocket.close(code=status.WS_1011_INTERNAL_ERROR)
-            raise exc
+        response = await self.handlers[msg.type](msg.data)
 
         if response is not None:
             #TODO validate response
@@ -110,3 +105,10 @@ class WebSocketHandlingEndpoint:
             errors = [{'msg': str(exc), 'type': type(exc).__name__}]
 
         await self.websocket.send_json({'errors': errors})
+
+    async def on_connect(self) -> None:
+        """Override to handle an incoming websocket connection"""
+        await self.websocket.accept()
+
+    async def on_disconnect(self, close_code: int) -> None:
+        """Override to handle a disconnecting websocket"""
