@@ -93,9 +93,6 @@ class WebSocketHandlingEndpoint:
             #TODO validate response
             self.send_json(response)
 
-    async def send_json(self, response: typing.Any) -> None:
-        return await self.websocket.send_json(response)
-
     async def send_exception(self, exc: Exception) -> None:
         errors: typing.List[typing.Dict[str,typing.Any]] | typing.List[ErrorDict]
         if isinstance(exc, ValidationError):
@@ -108,6 +105,9 @@ class WebSocketHandlingEndpoint:
             errors = [{'msg': str(exc), 'type': type(exc).__name__}]
 
         await self.send_json({'errors': errors})
+
+    async def send_json(self, response: typing.Any) -> None:
+        return await self.websocket.send_json(response)
 
     async def on_connect(self) -> None:
         """Override to handle an incoming websocket connection"""
