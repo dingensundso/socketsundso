@@ -9,6 +9,7 @@ from starlette.types import Receive, Scope, Send
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError, create_model
+from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
 from .models import WebsocketEventMessage
 
@@ -19,6 +20,13 @@ class Handler:
     def __init__(self, event: str, method: typing.Callable) -> None:
         self.event = event
         self.method = method
+
+        self.model = create_model(f'{event}_data')
+        sig = get_typed_signature(method)
+
+        for k, v in sig.parameters.items():
+            field = get_param_field(param_name=k, param=v)
+            self.model.__fields__[k] = field
 
     async def __call__(self, data: typing.Any) -> typing.Generator:
         return await self.method(data)
