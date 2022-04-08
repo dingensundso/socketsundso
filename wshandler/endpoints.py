@@ -14,9 +14,6 @@ class WebsocketEventMessage(BaseModel):
     type: str
     data: typing.Any
 
-class Response:
-    pass
-
 class WebSocketHandlingEndpoint:
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "websocket"
@@ -24,7 +21,7 @@ class WebSocketHandlingEndpoint:
         self.receive = receive
         self.send = send
         self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
-        self.handlers: Dict[str, typing.Callable] = {}
+        self.handlers: typing.Dict[str, typing.Callable] = {}
 
         # register all methods starting with on_ as handlers
         for methodname in dir(self):
@@ -96,11 +93,11 @@ class WebSocketHandlingEndpoint:
             #TODO validate response
             self.send_json(response)
 
-    async def send_json(self, response: Response):
+    async def send_json(self, response: typing.Any) -> None:
         return await self.websocket.send_json(response)
 
     async def send_exception(self, exc: Exception) -> None:
-        errors: List[Dict[str,Any]] | List[ErrorDict]
+        errors: typing.List[typing.Dict[str,typing.Any]] | typing.List[ErrorDict]
         if isinstance(exc, ValidationError):
             errors = exc.errors()
         elif isinstance(exc, HTTPException):
