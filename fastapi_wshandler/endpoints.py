@@ -9,6 +9,7 @@ from starlette.types import Receive, Scope, Send
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError, create_model
+from fastapi.encoders import jsonable_encoder
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
 from .models import WebsocketEventMessage
@@ -17,6 +18,10 @@ if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
 
 class Handler:
+    """
+    Class representation of a handler. It holds information about the handler, e.g. input model
+    (based on :class:`pydantic.BaseModel`), :param:`event`, etc
+    """
     def __init__(self, event: str, method: typing.Callable) -> None:
         self.event = event
         self.method = method
@@ -24,9 +29,9 @@ class Handler:
         self.model = create_model(f'{event}_data')
         sig = get_typed_signature(method)
 
-        for k, v in sig.parameters.items():
-            field = get_param_field(param_name=k, param=v)
-            self.model.__fields__[k] = field
+        for param_name, param in sig.parameters.items():
+            field = get_param_field(param_name=param_name, param=param)
+            self.model.__fields__[param_name] = field
 
     async def __call__(self, data: typing.Any) -> typing.Generator:
         return await self.method(data)
@@ -40,7 +45,7 @@ def handler(event: str) -> typing.Callable:
     handler happens in :meth:`WebSocketHandlingEndpoint.__init__`
     """
     def decorator(func: typing.Callable) -> typing.Callable:
-        func.__handler_event = event
+        setattr(func, '__handler_event', event)
         return func
     return decorator
 
@@ -71,14 +76,14 @@ class WebSocketHandlingEndpoint:
 
         # register all methods starting with on_ as handlers
         for methodname in dir(self):
-            handler = getattr(self, methodname)
+            handler_method = getattr(self, methodname)
 
-            if hasattr(handler, '__handler_event'):
-                self.set_handler(getattr(handler, '__handler_event'), handler)
+            if hasattr(handler_method, '__handler_event'):
+                self.set_handler(getattr(handler_method, '__handler_event'), handler_method)
             elif methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect']:
-                assert callable(handler), 'handler methods starting with on_ have to be callable'
-                self.set_handler(methodname[3:], handler)
+                assert callable(handler_method), 'handler methods have to be callable'
+                self.set_handler(methodname[3:], handler_method)
 
         self.__update_event_message_model()
 
@@ -194,7 +199,6 @@ class WebSocketHandlingEndpoint:
 
     async def send_json(self, response: typing.Any) -> None:
         """Override to handle outgoing messages"""
-        from fastapi.encoders import jsonable_encoder
         return await self.websocket.send_json(jsonable_encoder(response))
 
     async def on_connect(self) -> None:
