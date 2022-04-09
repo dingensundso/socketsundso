@@ -27,6 +27,7 @@ class Handler:
         self.method = method
 
         self.model = create_model(f'{event}_data', __base__=WebsocketEventMessage)
+        self.model.__config__.extra = 'forbid'
         sig = get_typed_signature(method)
 
         for param_name, param in sig.parameters.items():
@@ -150,6 +151,8 @@ class WebSocketHandlingEndpoint:
                         await self.handle(msg)
                     except WebSocketDisconnect as exc:
                         close_code = exc.code
+                    except ValidationError as exc:
+                        await self.send_exception(exc)
                     except HTTPException as exc:
                         await self.send_exception(exc)
                     #TODO remove this! don't send all exceptions to clients
@@ -169,7 +172,7 @@ class WebSocketHandlingEndpoint:
 
         # todo validate incoming data
         handler = self.handlers[msg.type]
-        data = handler.model.dict(msg)
+        data = handler.model.parse_obj(msg).dict()
         for msgfield in WebsocketEventMessage.__fields__:
             del data[msgfield]
         response = await self.handlers[msg.type](**data)
