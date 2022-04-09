@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI, WebSocket
 from starlette import status
 
-from fastapi_wshandler import WebSocketHandlingEndpoint, on_event
+from socketsundso import WebSocketHandlingEndpoint, on_event
 
 app = FastAPI()
 

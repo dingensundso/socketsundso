@@ -1,4 +1,4 @@
-# FastAPI WebSocketHandler
+# socketsundso
 
 ## What's all this then?
 This is an opionated framework for creating WebSocket APIs based on [FastAPI](https://fastapi.tiangolo.com/), [Starlette](https://www.starlette.io/) and [pydantic](https://pydantic-docs.helpmanual.io/).
