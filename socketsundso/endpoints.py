@@ -61,7 +61,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
             method: typing.Callable,
             ) -> None:
         """
-        Register a handler for event
+        Declares a method as handler for :param:`event`
         """
         assert event not in ['connect', 'disconnect', 'receive'], f'{event} is reserved'
 
@@ -75,6 +75,16 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
         if hasattr(cls, 'event_message_model'):
             cls.__update_event_message_model()
+
+    @classmethod
+    def on_event(cls, event: str) -> typing.Callable:
+        """
+        Declares a method as handler for :param:`event`
+        """
+        def decorator(func: typing.Callable) -> typing.Callable:
+            cls.set_handler(event, func)
+            return func
+        return decorator
 
     async def dispatch(self) -> None:
         """
