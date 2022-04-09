@@ -7,29 +7,6 @@ from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
 from .models import WebSocketEventMessage
 
-class HandlingEndpointMeta(type):
-    def __new__(metacls, name, bases, namespace, **kwargs):
-        cls = super().__new__(metacls, name, bases, namespace, **kwargs)
-        setattr(cls, 'handlers', {})
-
-        for methodname in dir(cls):
-            method = getattr(cls, methodname)
-
-            if callable(method):
-                #TODO we should propably check if it's a static or class method...
-                handler_method = partial(method, cls)
-            else:
-                continue
-
-            if hasattr(method, '__handler_event'):
-                cls.set_handler(getattr(method, '__handler_event'), handler_method)
-            elif methodname.startswith('on_') and methodname not in \
-                    ['on_connect', 'on_receive', 'on_disconnect']:
-                assert callable(handler_method), 'handler methods have to be callable'
-                cls.set_handler(methodname[3:], handler_method)
-
-        return cls
-
 class Handler:
     """
     Class representation of a handler. It holds information about the handler, e.g. input model
