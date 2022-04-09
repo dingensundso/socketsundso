@@ -1,5 +1,6 @@
 """:class:`Handler` and related methods"""
 import typing
+from functools import partial
 
 from pydantic import create_model, Extra
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
@@ -12,10 +13,16 @@ class HandlingEndpointMeta(type):
         setattr(cls, 'handlers', {})
 
         for methodname in dir(cls):
-            handler_method = getattr(cls, methodname)
+            method = getattr(cls, methodname)
 
-            if hasattr(handler_method, '__handler_event'):
-                cls.set_handler(getattr(handler_method, '__handler_event'), handler_method)
+            if callable(method):
+                #TODO we should propably check if it's a static or class method...
+                handler_method = partial(method, cls)
+            else:
+                continue
+
+            if hasattr(method, '__handler_event'):
+                cls.set_handler(getattr(method, '__handler_event'), handler_method)
             elif methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect']:
                 assert callable(handler_method), 'handler methods have to be callable'
@@ -45,9 +52,9 @@ class Handler:
             field = get_param_field(param_name=param_name, param=param)
             self.model.__fields__[param_name] = field
 
-    async def __call__(self, endpoint: HandlingEndpointMeta, msg: WebSocketEventMessage) -> typing.Generator:
+    async def __call__(self, msg: WebSocketEventMessage) -> typing.Generator:
         data = self.model.parse_obj(msg).dict(exclude={'type'})
-        return await self.method(endpoint, **data)
+        return await self.method(**data)
 
 
 def on_event(event: str) -> typing.Callable:
