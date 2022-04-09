@@ -168,6 +168,7 @@ class WebSocketHandlingEndpoint:
 
     async def handle(self, msg: WebSocketEventMessage) -> None:
         """Calls the handler for the incoming ``msg``"""
+        assert msg.type in self.handlers, 'handle called for unknown event'
         logging.debug("Calling handler for message %s", msg)
 
         # todo validate incoming data
