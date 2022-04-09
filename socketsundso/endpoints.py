@@ -18,27 +18,27 @@ if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
 
 class HandlingEndpointMeta(type):
-    def __new__(metacls, name, bases, namespace, **kwargs):
-        cls = super().__new__(metacls, name, bases, namespace, **kwargs)
-        setattr(cls, 'handlers', {})
+    def __new__(cls, *args, **kwargs):
+        endpoint = super().__new__(cls, *args, **kwargs)
+        setattr(endpoint, 'handlers', {})
 
-        for methodname in dir(cls):
-            method = getattr(cls, methodname)
+        for methodname in dir(endpoint):
+            method = getattr(endpoint, methodname)
 
             if callable(method):
                 #TODO we should propably check if it's a static or class method...
-                handler_method = partial(method, cls)
+                handler_method = partial(method, endpoint)
             else:
                 continue
 
             if hasattr(method, '__handler_event'):
-                cls.set_handler(getattr(method, '__handler_event'), handler_method)
+                endpoint.set_handler(getattr(method, '__handler_event'), handler_method)
             elif methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect']:
                 assert callable(handler_method), 'handler methods have to be callable'
-                cls.set_handler(methodname[3:], handler_method)
+                endpoint.set_handler(methodname[3:], handler_method)
 
-        return cls
+        return endpoint
 
 class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     """
@@ -157,7 +157,6 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         logging.debug("Calling handler for message %s", msg)
 
         # todo validate incoming data
-        handler = self.handlers[msg.type]
         response = await self.handlers[msg.type](msg)
 
         if response is not None:

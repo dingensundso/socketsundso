@@ -1,6 +1,5 @@
 """:class:`Handler` and related methods"""
 import typing
-from functools import partial
 
 from pydantic import create_model, Extra
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
@@ -19,7 +18,8 @@ class Handler:
         class Config:
             extra = Extra.forbid
 
-        self.model = create_model(f'WebSocketEventMessage_{event}', type=(typing.Literal[event],...), __config__=Config)
+        self.model = create_model(f'WebSocketEventMessage_{event}',
+                type=(typing.Literal[event],...), __config__=Config)
         self.model.__config__.extra = Extra.forbid
         sig = get_typed_signature(method)
 
