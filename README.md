@@ -13,7 +13,7 @@ The basic message format is as follows
 ```python
 {
 	type: str,
-	data: Any
+	...
 }
 ```
 
@@ -25,6 +25,8 @@ async def on_message(self, message: str) -> None:
 	print(message)
 ```
 
+The magical part is that when we receive a message with type 'message' socketsundso will check that all the arguments required are there.
+
 ## Documentation
 There will propably be some [Sphinx](https://www.sphinx-doc.org/) based documentation at some point. For now you will have to look inside the source files for all the docstrings I wrote.
 
@@ -32,7 +34,7 @@ There will propably be some [Sphinx](https://www.sphinx-doc.org/) based document
 ## Roadmap
 Things that should/will/propably won't be implemented soon:
 
-- [ ] validation of incoming data (based on type signatures of handlers)
+- [x] validation of incoming data (based on type signatures of handlers)
 - [ ] response_model
 - [ ] nice and shiny documentation
 - [ ] examples

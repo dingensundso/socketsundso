@@ -26,15 +26,15 @@ class Handler:
         self.event = event
         self.method = method
 
-        self.model = create_model(f'{event}_data')
+        self.model = create_model(f'{event}_data', __base__=WebsocketEventMessage)
         sig = get_typed_signature(method)
 
         for param_name, param in sig.parameters.items():
             field = get_param_field(param_name=param_name, param=param)
             self.model.__fields__[param_name] = field
 
-    async def __call__(self, data: typing.Any) -> typing.Generator:
-        return await self.method(data)
+    async def __call__(self, **kwargs) -> typing.Generator:
+        return await self.method(**kwargs)
 
 def on_event(event: str) -> typing.Callable:
     """
@@ -165,10 +165,14 @@ class WebSocketHandlingEndpoint:
 
     async def handle(self, msg: WebsocketEventMessage) -> None:
         """Calls the handler for the incoming ``msg``"""
-        logging.debug("Handler called for %s with %s", msg.type, msg.data)
+        logging.debug("Calling handler for message %s", msg)
 
         # todo validate incoming data
-        response = await self.handlers[msg.type](msg.data)
+        handler = self.handlers[msg.type]
+        data = handler.model.dict(msg)
+        for msgfield in WebsocketEventMessage.__fields__:
+            del data[msgfield]
+        response = await self.handlers[msg.type](**data)
 
         if response is not None:
             #TODO validate response
