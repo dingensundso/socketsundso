@@ -12,7 +12,7 @@ from pydantic import ValidationError, create_model
 from fastapi.encoders import jsonable_encoder
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
-from .models import WebsocketEventMessage
+from .models import WebSocketEventMessage
 
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
@@ -26,7 +26,7 @@ class Handler:
         self.event = event
         self.method = method
 
-        self.model = create_model(f'{event}_data', __base__=WebsocketEventMessage)
+        self.model = create_model(f'{event}_data', __base__=WebSocketEventMessage)
         self.model.__config__.extra = 'forbid'
         sig = get_typed_signature(method)
 
@@ -55,9 +55,9 @@ class WebSocketHandlingEndpoint:
     The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
 
     This class is based on :class:`starlette.endpoints.WebSocketEndpoint`
-    Incoming messages have to be based on :class:`WebsocketEventMessage`
+    Incoming messages have to be based on :class:`WebSocketEventMessage`
 
-    :meth:`dispatch` will call handlers based on the incoming :attr:`WebsocketEventMessage.type`.
+    :meth:`dispatch` will call handlers based on the incoming :attr:`WebSocketEventMessage.type`.
     If the handler returns something it will be send to the client.
 
     To register a handler name it on_[type] or decorate it with :meth:`handler` and the
@@ -90,9 +90,9 @@ class WebSocketHandlingEndpoint:
 
     def __update_event_message_model(self) -> None:
         self.event_message_model = create_model(
-            'WebsocketEventMessage',
+            'WebSocketEventMessage',
             type=(Enum('type', [(event, event) for event in self.handlers]), ...),
-            __base__=WebsocketEventMessage
+            __base__=WebSocketEventMessage
         )
 
     def __await__(self) -> typing.Generator:
@@ -126,7 +126,7 @@ class WebSocketHandlingEndpoint:
 
         This method will be called by starlette.
 
-        If the client sends a JSON payload that does not conform to :class:`WebsocketEventMessage`
+        If the client sends a JSON payload that does not conform to :class:`WebSocketEventMessage`
         or :meth:`handle` raises an :exc:`Exception` the errors will be send to the client via
         :meth:`send_exception`.
         """
@@ -166,14 +166,14 @@ class WebSocketHandlingEndpoint:
         finally:
             await self.on_disconnect(close_code)
 
-    async def handle(self, msg: WebsocketEventMessage) -> None:
+    async def handle(self, msg: WebSocketEventMessage) -> None:
         """Calls the handler for the incoming ``msg``"""
         logging.debug("Calling handler for message %s", msg)
 
         # todo validate incoming data
         handler = self.handlers[msg.type]
         data = handler.model.parse_obj(msg).dict()
-        for msgfield in WebsocketEventMessage.__fields__:
+        for msgfield in WebSocketEventMessage.__fields__:
             del data[msgfield]
         response = await self.handlers[msg.type](**data)
 
@@ -197,7 +197,7 @@ class WebSocketHandlingEndpoint:
                 'msg': exc.detail,
                 'status_code': exc.status_code,
                 'type': type(exc).__name__}]
-        #elif isinstance(exc, WebsocketException):
+        #elif isinstance(exc, WebSocketException):
             #TODO
         else:
             errors = [{'msg': str(exc), 'type': type(exc).__name__}]

@@ -3,9 +3,9 @@ import typing
 
 from pydantic import BaseModel
 
-class WebsocketEventMessage(BaseModel):
+class WebSocketEventMessage(BaseModel):
     """
-    BaseModel of an incoming WebsocketEvent
+    BaseModel of an incoming WebSocketEvent
 
     All other arguments of a handler will be added dynamically.
 
