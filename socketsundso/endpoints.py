@@ -42,9 +42,6 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         self.send = send
         self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
 
-        self.__update_event_message_model()
-
-    def __update_event_message_model(self) -> None:
         self.event_message_model = create_model(
             'WebSocketEventMessage',
             type=(typing.Literal[tuple(self.handlers.keys())], ...),
@@ -72,9 +69,6 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
             logging.warning("Overwriting handler for %s with %s", event, method)
         else:
             cls.handlers[event] = Handler(event, method)
-
-        if hasattr(cls, 'event_message_model'):
-            cls.__update_event_message_model()
 
     @classmethod
     def on_event(cls, event: str) -> typing.Callable:
