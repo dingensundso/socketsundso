@@ -3,10 +3,16 @@ import logging
 
 from fastapi import FastAPI, WebSocket
 from starlette import status
+from pydantic import BaseModel
 
 from socketsundso import WebSocketHandlingEndpoint, on_event
 
 app = FastAPI()
+
+class ChatMessage(BaseModel):
+    type = 'message'
+    sender: str | None
+    msg: str
 
 class ConnectionManager:
     def __init__(self) -> None:
@@ -19,12 +25,9 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket) -> None:
         self.active_connections.remove(websocket)
 
-    async def send_personal_message(self, message: str, websocket: WebSocket) -> None:
-        await websocket.send_text(message)
-
-    async def broadcast(self, message: str) -> None:
+    async def broadcast(self, message: str, sender: str | None=None) -> None:
         for connection in self.active_connections:
-            await connection.send_text(message)
+            await connection.send_json(ChatMessage(msg=message, sender=sender).dict())
 
 manager = ConnectionManager()
 
@@ -41,12 +44,10 @@ class MyWSApp(WebSocketHandlingEndpoint):
         manager.disconnect(self.websocket)
         await manager.broadcast(f'Client #{self.client_id} left the chat')
 
-    async def on_message(self, data: str) -> None:
+    async def on_message(self, msg: str) -> None:
         print('on_message')
-        await self.send_json({'msg':'received'})
-        await manager.broadcast(f"#{self.client_id}: " + data)
+        await manager.broadcast(f"#{self.client_id}: " + msg)
 
     @on_event('foobar')
-    async def foobar(self, data) -> None:
-        await self.send_json({'msg':'received'})
+    async def foobar(self) -> None:
         await manager.broadcast("foobar")
