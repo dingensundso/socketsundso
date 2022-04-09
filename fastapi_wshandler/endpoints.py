@@ -36,7 +36,7 @@ class Handler:
     async def __call__(self, data: typing.Any) -> typing.Generator:
         return await self.method(data)
 
-def handler(event: str) -> typing.Callable:
+def on_event(event: str) -> typing.Callable:
     """
     Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
     Declares a method as handler for :param:`event`

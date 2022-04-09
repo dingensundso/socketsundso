@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI, WebSocket
 from starlette import status
 
-from fastapi_wshandler import WebSocketHandlingEndpoint, handler
+from fastapi_wshandler import WebSocketHandlingEndpoint, on_event
 
 app = FastAPI()
 
@@ -46,7 +46,7 @@ class MyWSApp(WebSocketHandlingEndpoint):
         await self.send_json({'msg':'received'})
         await manager.broadcast(f"#{self.client_id}: " + data)
 
-    @handler('foobar')
+    @on_event('foobar')
     async def foobar(self, data) -> None:
         await self.send_json({'msg':'received'})
         await manager.broadcast("foobar")
