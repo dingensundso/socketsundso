@@ -1,1 +1,2 @@
-from .endpoints import WebSocketHandlingEndpoint, on_event
+from .endpoints import WebSocketHandlingEndpoint
+from .handler import on_event
