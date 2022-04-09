@@ -2,7 +2,6 @@
 import typing
 import json
 import logging
-from enum import Enum
 
 from starlette import status
 from starlette.types import Receive, Scope, Send
@@ -26,7 +25,10 @@ class Handler:
         self.event = event
         self.method = method
 
-        self.model = create_model(f'{event}_data', __base__=WebSocketEventMessage)
+        class Config:
+            extra = Extra.forbid
+
+        self.model = create_model(f'WebSocketEventMessage_{event}', type=(typing.Literal[event],...), __config__=Config)
         self.model.__config__.extra = Extra.forbid
         sig = get_typed_signature(method)
 
@@ -91,7 +93,7 @@ class WebSocketHandlingEndpoint:
     def __update_event_message_model(self) -> None:
         self.event_message_model = create_model(
             'WebSocketEventMessage',
-            type=(Enum('type', [(event, event) for event in self.handlers]), ...),
+            type=(typing.Literal[tuple(self.handlers.keys())], ...),
             __base__=WebSocketEventMessage
         )
 

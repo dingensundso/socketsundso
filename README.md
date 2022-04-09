@@ -25,7 +25,16 @@ async def on_message(self, message: str) -> None:
 	print(message)
 ```
 
-The magical part is that when we receive a message with type 'message' socketsundso will check that all the arguments required are there.
+When registering a handler like above, socketsundso will create a pydantic model specifically for messages for this handler.
+This model is similar to this:
+```python
+class Message(BaseModel):
+	type: typing.Literal('message'),
+	message: str
+
+	class Config:
+		extra = 'forbid'
+```
 
 ## Documentation
 There will propably be some [Sphinx](https://www.sphinx-doc.org/) based documentation at some point. For now you will have to look inside the source files for all the docstrings I wrote.
