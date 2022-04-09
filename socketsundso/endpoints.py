@@ -8,7 +8,7 @@ from starlette import status
 from starlette.types import Receive, Scope, Send
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
-from pydantic import ValidationError, create_model
+from pydantic import ValidationError, create_model, Extra
 from fastapi.encoders import jsonable_encoder
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
@@ -27,14 +27,14 @@ class Handler:
         self.method = method
 
         self.model = create_model(f'{event}_data', __base__=WebSocketEventMessage)
-        self.model.__config__.extra = 'forbid'
+        self.model.__config__.extra = Extra.forbid
         sig = get_typed_signature(method)
 
         for param_name, param in sig.parameters.items():
             field = get_param_field(param_name=param_name, param=param)
             self.model.__fields__[param_name] = field
 
-    async def __call__(self, **kwargs) -> typing.Generator:
+    async def __call__(self, **kwargs: typing.Any) -> typing.Generator:
         return await self.method(**kwargs)
 
 def on_event(event: str) -> typing.Callable:
