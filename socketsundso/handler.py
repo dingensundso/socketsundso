@@ -1,7 +1,7 @@
 """:class:`Handler` and related methods"""
 import typing
 
-from pydantic import create_model, Extra
+from pydantic import create_model, Extra, BaseConfig
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
 from .models import WebSocketEventMessage
@@ -15,7 +15,7 @@ class Handler:
         self.event = event
         self.method = method
 
-        class Config:
+        class Config(BaseConfig):
             extra = Extra.forbid
 
         self.model = create_model(f'WebSocketEventMessage_{event}',

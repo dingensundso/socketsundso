@@ -18,8 +18,8 @@ if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
 
 class HandlingEndpointMeta(type):
-    def __new__(cls, *args, **kwargs):
-        endpoint = super().__new__(cls, *args, **kwargs)
+    def __new__(cls: typing.Type[type], *args: str, **kwargs: typing.Any) -> type:
+        endpoint = type.__new__(cls, *args, **kwargs)
         setattr(endpoint, 'handlers', {})
 
         for methodname in dir(endpoint):
@@ -31,12 +31,14 @@ class HandlingEndpointMeta(type):
             else:
                 continue
 
+            set_handler = getattr(endpoint, 'set_handler')
+
             if hasattr(method, '__handler_event'):
-                endpoint.set_handler(getattr(method, '__handler_event'), handler_method)
+                set_handler(getattr(method, '__handler_event'), handler_method)
             elif methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect']:
                 assert callable(handler_method), 'handler methods have to be callable'
-                endpoint.set_handler(methodname[3:], handler_method)
+                set_handler(methodname[3:], handler_method)
 
         return endpoint
 
