@@ -1,6 +1,9 @@
 """:class:`Handler` and related methods"""
 import typing
 
+from pydantic import create_model, Extra
+from fastapi.dependencies.utils import get_typed_signature, get_param_field
+
 class Handler:
     """
     Class representation of a handler. It holds information about the handler, e.g. input model
@@ -18,11 +21,13 @@ class Handler:
         sig = get_typed_signature(method)
 
         for param_name, param in sig.parameters.items():
+            if param_name == 'self':
+                continue
             field = get_param_field(param_name=param_name, param=param)
             self.model.__fields__[param_name] = field
 
-    async def __call__(self, **kwargs: typing.Any) -> typing.Generator:
-        return await self.method(**kwargs)
+    async def __call__(self, *args, **kwargs: typing.Any) -> typing.Generator:
+        return await self.method(*args, **kwargs)
 
 
 def on_event(event: str) -> typing.Callable:
