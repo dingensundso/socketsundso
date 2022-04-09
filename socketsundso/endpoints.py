@@ -7,17 +7,16 @@ from starlette import status
 from starlette.types import Receive, Scope, Send
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
-from pydantic import ValidationError, create_model, Extra
+from pydantic import ValidationError, create_model
 from fastapi.encoders import jsonable_encoder
-from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
 from .models import WebSocketEventMessage
-from .handler import Handler
+from .handler import Handler, HandlingEndpointMeta
 
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
 
-class WebSocketHandlingEndpoint:
+class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     """
     The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
 
@@ -34,24 +33,14 @@ class WebSocketHandlingEndpoint:
     You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
     clients connect or disconnect.
     """
+    handlers: typing.Dict[str, Handler] = {}
+
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
         assert scope["type"] == "websocket"
         self.scope = scope
         self.receive = receive
         self.send = send
         self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
-        self.handlers: typing.Dict[str, Handler] = {}
-
-        # register all methods starting with on_ as handlers
-        for methodname in dir(self):
-            handler_method = getattr(self, methodname)
-
-            if hasattr(handler_method, '__handler_event'):
-                self.set_handler(getattr(handler_method, '__handler_event'), handler_method)
-            elif methodname.startswith('on_') and methodname not in \
-                    ['on_connect', 'on_receive', 'on_disconnect']:
-                assert callable(handler_method), 'handler methods have to be callable'
-                self.set_handler(methodname[3:], handler_method)
 
         self.__update_event_message_model()
 
@@ -65,8 +54,9 @@ class WebSocketHandlingEndpoint:
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
 
+    @classmethod
     def set_handler(
-            self,
+            cls,
             event: str,
             method: typing.Callable,
             ) -> None:
@@ -76,15 +66,15 @@ class WebSocketHandlingEndpoint:
         assert event not in ['connect', 'disconnect', 'receive'], f'{event} is reserved'
 
         if method is None:
-            del self.handlers[event]
+            del cls.handlers[event]
             logging.debug('Clearing handler for %s', event)
-        elif event in self.handlers:
+        elif event in cls.handlers:
             logging.warning("Overwriting handler for %s with %s", event, method)
         else:
-            self.handlers[event] = Handler(event, method)
+            cls.handlers[event] = Handler(event, method)
 
-        if hasattr(self, 'event_message_model'):
-            self.__update_event_message_model()
+        if hasattr(cls, 'event_message_model'):
+            cls.__update_event_message_model()
 
     async def dispatch(self) -> None:
         """
@@ -143,7 +133,7 @@ class WebSocketHandlingEndpoint:
         data = handler.model.parse_obj(msg).dict()
         for msgfield in WebSocketEventMessage.__fields__:
             del data[msgfield]
-        response = await self.handlers[msg.type](**data)
+        response = await self.handlers[msg.type](self, **data)
 
         if response is not None:
             #TODO validate response
