@@ -130,10 +130,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
         # todo validate incoming data
         handler = self.handlers[msg.type]
-        data = handler.model.parse_obj(msg).dict()
-        for msgfield in WebSocketEventMessage.__fields__:
-            del data[msgfield]
-        response = await self.handlers[msg.type](self, **data)
+        response = await self.handlers[msg.type](self, msg)
 
         if response is not None:
             #TODO validate response

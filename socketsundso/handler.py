@@ -4,6 +4,25 @@ import typing
 from pydantic import create_model, Extra
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
 
+from .models import WebSocketEventMessage
+
+class HandlingEndpointMeta(type):
+    def __new__(metacls, name, bases, namespace, **kwargs):
+        cls = super().__new__(metacls, name, bases, namespace, **kwargs)
+        setattr(cls, 'handlers', {})
+
+        for methodname in dir(cls):
+            handler_method = getattr(cls, methodname)
+
+            if hasattr(handler_method, '__handler_event'):
+                cls.set_handler(getattr(handler_method, '__handler_event'), handler_method)
+            elif methodname.startswith('on_') and methodname not in \
+                    ['on_connect', 'on_receive', 'on_disconnect']:
+                assert callable(handler_method), 'handler methods have to be callable'
+                cls.set_handler(methodname[3:], handler_method)
+
+        return cls
+
 class Handler:
     """
     Class representation of a handler. It holds information about the handler, e.g. input model
@@ -26,25 +45,9 @@ class Handler:
             field = get_param_field(param_name=param_name, param=param)
             self.model.__fields__[param_name] = field
 
-    async def __call__(self, *args, **kwargs: typing.Any) -> typing.Generator:
-        return await self.method(*args, **kwargs)
-
-class HandlingEndpointMeta(type):
-    def __new__(metacls, name, bases, namespace, **kwargs):
-        cls = super().__new__(metacls, name, bases, namespace, **kwargs)
-        setattr(cls, 'handlers', {})
-
-        for methodname in dir(cls):
-            handler_method = getattr(cls, methodname)
-
-            if hasattr(handler_method, '__handler_event'):
-                cls.set_handler(getattr(handler_method, '__handler_event'), handler_method)
-            elif methodname.startswith('on_') and methodname not in \
-                    ['on_connect', 'on_receive', 'on_disconnect']:
-                assert callable(handler_method), 'handler methods have to be callable'
-                cls.set_handler(methodname[3:], handler_method)
-
-        return cls
+    async def __call__(self, endpoint: HandlingEndpointMeta, msg: WebSocketEventMessage) -> typing.Generator:
+        data = self.model.parse_obj(msg).dict(exclude={'type'})
+        return await self.method(endpoint, **data)
 
 
 def on_event(event: str) -> typing.Callable:
