@@ -68,16 +68,11 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
             __base__=WebSocketEventMessage
         )
 
-        self.__update_handler_binds()
-
-    def __update_handler_binds(self):
-        class_dict = self.__class__.__dict__
+        # we need to tell the handlers that need us who we are
         for handler in self.handlers.values():
-            method_name = handler.method.__name__
-            if method_name in class_dict and class_dict[method_name] == handler.method and\
-                    'self' in inspect.signature(handler.method).parameters:
-                handler.method = partial(handler.method, self)
-
+            # check if handler.method is on of our methods
+            if self.__class__.__dict__.get(handler.method.__name__) == handler.method:
+                handler.bind_to = self
 
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
@@ -131,6 +126,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                 try:
                     data = await self.websocket.receive_json()
                     msg = self.event_message_model(**data)
+                    await self.handle(msg)
                 except json.decoder.JSONDecodeError as exc:
                     await self.websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
                     raise RuntimeError("Malformed JSON data received.") from exc
@@ -138,19 +134,10 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                     await self.send_exception(exc)
                 except WebSocketDisconnect as exc:
                     close_code = exc.code
-                else:
-                    try:
-                        await self.handle(msg)
-                    except WebSocketDisconnect as exc:
-                        close_code = exc.code
-                    except ValidationError as exc:
-                        await self.send_exception(exc)
-                    except HTTPException as exc:
-                        await self.send_exception(exc)
-                    #TODO remove this! don't send all exceptions to clients
-                    except Exception as exc:
-                        await self.send_exception(exc)
-                        raise exc
+                #TODO remove this! don't send all exceptions to clients
+                except Exception as exc:
+                    await self.send_exception(exc)
+                    raise exc
 
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR

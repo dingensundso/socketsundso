@@ -11,9 +11,12 @@ class Handler:
     Class representation of a handler. It holds information about the handler, e.g. input model
     (based on :class:`pydantic.BaseModel`), :param:`event`, etc
     """
-    def __init__(self, event: str, method: typing.Callable) -> None:
+    def __init__(self, event: str, method: typing.Callable, bind_to: type = None) -> None:
         self.event = event
         self.method = method
+        self.bind_to = bind_to
+
+        self.__needs_self = False
 
         class Config(BaseConfig):
             extra = Extra.forbid
@@ -21,16 +24,22 @@ class Handler:
         self.model = create_model(f'WebSocketEventMessage_{event}',
                 type=(typing.Literal[event],...), __config__=Config)
         self.model.__config__.extra = Extra.forbid
-        sig = get_typed_signature(method)
 
+        sig = get_typed_signature(method)
         for param_name, param in sig.parameters.items():
             if param_name == 'self':
+                self.__needs_self = True
                 continue
             field = get_param_field(param_name=param_name, param=param)
             self.model.__fields__[param_name] = field
 
     async def __call__(self, msg: WebSocketEventMessage) -> typing.Generator:
         data = self.model.parse_obj(msg).dict(exclude={'type'})
+
+        if self.__needs_self:
+            assert self.bind_to != None, "handler method expects self, but we don't know that instance"
+            return await self.method(self.bind_to, **data)
+
         return await self.method(**data)
 
 
