@@ -38,3 +38,5 @@ Things that should/will/propably won't be implemented soon:
 - [ ] examples
 - [ ] setup.py etc for easy installation
 - [ ] some crazy scheme to make money with this (maybe add a cryptominer to some file deep within?)
+- [ ] some kind of license
+- [ ] tests!!!
