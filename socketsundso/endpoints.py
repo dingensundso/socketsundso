@@ -2,6 +2,7 @@
 import typing
 import json
 import logging
+import inspect
 from functools import partial
 
 from starlette import status
@@ -24,21 +25,14 @@ class HandlingEndpointMeta(type):
 
         for methodname in dir(endpoint):
             method = getattr(endpoint, methodname)
-
-            if callable(method):
-                #TODO we should propably check if it's a static or class method...
-                handler_method = partial(method, endpoint)
-            else:
-                continue
-
             set_handler = getattr(endpoint, 'set_handler')
 
             if hasattr(method, '__handler_event'):
-                set_handler(getattr(method, '__handler_event'), handler_method)
+                set_handler(getattr(method, '__handler_event'), method)
             elif methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect', 'on_event']:
-                assert callable(handler_method), 'handler methods have to be callable'
-                set_handler(methodname[3:], handler_method)
+                assert callable(method), 'handler methods have to be callable'
+                set_handler(methodname[3:], method)
 
         return endpoint
 
@@ -73,6 +67,17 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
             type=(typing.Literal[tuple(self.handlers.keys())], ...),
             __base__=WebSocketEventMessage
         )
+
+        self.__update_handler_binds()
+
+    def __update_handler_binds(self):
+        class_dict = self.__class__.__dict__
+        for handler in self.handlers.values():
+            method_name = handler.method.__name__
+            if method_name in class_dict and class_dict[method_name] == handler.method and\
+                    'self' in inspect.signature(handler.method).parameters:
+                handler.method = partial(handler.method, self)
+
 
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
@@ -163,7 +168,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
         if response is not None:
             #TODO validate response
-            self.send_json(response)
+            await self.send_json(response)
 
     async def send_exception(self, exc: Exception) -> None:
         """
