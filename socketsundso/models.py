@@ -1,6 +1,4 @@
 """:module:`pydantic` models used in this project"""
-import typing
-
 from pydantic import BaseModel
 
 class WebSocketEventMessage(BaseModel):
@@ -11,9 +9,10 @@ class WebSocketEventMessage(BaseModel):
 
     Note: When validating incoming messages, type will be replaced with an :class:`enum.Enum` of
     all registered event types.
+
+    So basically this whole class is kind of pointless.
     """
     type: str
-#    data: typing.Any
 
     class Config:
         use_enum_values = True
