@@ -36,7 +36,7 @@ class HandlingEndpointMeta(type):
             if hasattr(method, '__handler_event'):
                 set_handler(getattr(method, '__handler_event'), handler_method)
             elif methodname.startswith('on_') and methodname not in \
-                    ['on_connect', 'on_receive', 'on_disconnect']:
+                    ['on_connect', 'on_receive', 'on_disconnect', 'on_event']:
                 assert callable(handler_method), 'handler methods have to be callable'
                 set_handler(methodname[3:], handler_method)
 
