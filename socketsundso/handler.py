@@ -2,7 +2,10 @@
 import typing
 
 from pydantic import create_model, Extra, BaseConfig, BaseModel
+from pydantic.fields import ModelField
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
+from fastapi.routing import serialize_response, create_response_field
+from fastapi.encoders import jsonable_encoder
 
 from .models import WebSocketEventMessage
 
@@ -11,9 +14,17 @@ class Handler:
     Class representation of a handler. It holds information about the handler, e.g. input model
     (based on :class:`pydantic.BaseModel`), :param:`event`, etc
     """
-    def __init__(self, event: str, method: typing.Callable) -> None:
+    def __init__(self, event: str, method: typing.Callable, response_model: typing.Optional[ModelField] = None) -> None:
         self.event = event
         self.method = method
+        self.response_model = response_model
+        if self.response_model:
+            self.response_field = create_response_field(
+                name=f"Response_{self.event}", type_=self.response_model
+            )
+        else:
+            self.response_field = None
+
         self.model = self.__create_model()
         self.bound_method = None
 
@@ -23,7 +34,8 @@ class Handler:
 
     async def handle(self, msg: WebSocketEventMessage) -> typing.Generator:
         data = self.model.parse_obj(msg).dict(exclude={'type'})
-        return await self(**data)
+        response_content = await self(**data)
+        return await serialize_response(field = self.response_field, response_content = response_content)
 
     def __create_model(self) -> BaseModel:
         class Config(BaseConfig):
@@ -41,7 +53,7 @@ class Handler:
         return model
 
 
-def on_event(event: str) -> typing.Callable:
+def on_event(event: str, response_model = None) -> typing.Callable:
     """
     Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
     Declares a method as handler for :param:`event`
@@ -51,5 +63,5 @@ def on_event(event: str) -> typing.Callable:
     :meth:`HandlingEndpointMeta.__new__`
     """
     def decorator(func: typing.Callable) -> Handler:
-        return Handler(event, func)
+        return Handler(event, func, response_model = response_model)
     return decorator

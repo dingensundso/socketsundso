@@ -86,13 +86,13 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         return self.dispatch().__await__()
 
     @classmethod
-    def on_event(cls, event: str) -> typing.Callable:
+    def on_event(cls, event: str, response_model = None) -> typing.Callable:
         """
         Declares a method as handler for :param:`event`
         """
         def decorator(func: typing.Callable) -> Handler:
             assert event not in cls.handlers
-            handler = Handler(event, func)
+            handler = Handler(event, func, response_model = response_model)
             cls.handlers[event] = handler
             return handler
         return decorator
@@ -141,11 +141,9 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         assert msg.type in self.handlers, 'handle called for unknown event'
         logging.debug("Calling handler for message %s", msg)
 
-        # todo validate incoming data
         response = await self.handlers[msg.type].handle(msg)
 
         if response is not None:
-            #TODO validate response
             await self.send_json(response)
 
     async def send_exception(self, exc: Exception) -> None:
