@@ -44,10 +44,11 @@ There will propably be some [Sphinx](https://www.sphinx-doc.org/) based document
 Things that should/will/propably won't be implemented soon:
 
 - [x] validation of incoming data (based on type signatures of handlers)
+- [ ] tests!!!
 - [ ] response_model
+- [ ] don't require handlers to be async
 - [ ] nice and shiny documentation
 - [ ] examples
 - [ ] setup.py etc for easy installation
 - [ ] some crazy scheme to make money with this (maybe add a cryptominer to some file deep within?)
 - [ ] some kind of license
-- [ ] tests!!!
