@@ -4,6 +4,7 @@ import json
 import logging
 import inspect
 from functools import partial
+from types import MethodType
 
 from starlette import status
 from starlette.types import Receive, Scope, Send
@@ -21,19 +22,24 @@ if typing.TYPE_CHECKING:
 class HandlingEndpointMeta(type):
     def __new__(cls: typing.Type[type], *args: str, **kwargs: typing.Any) -> type:
         endpoint = type.__new__(cls, *args, **kwargs)
-        setattr(endpoint, 'handlers', {})
+
+        handlers = {}
 
         for methodname in dir(endpoint):
             method = getattr(endpoint, methodname)
-            set_handler = getattr(endpoint, 'set_handler')
 
-            if hasattr(method, '__handler_event'):
-                set_handler(getattr(method, '__handler_event'), method)
-            elif methodname.startswith('on_') and methodname not in \
+            # convert on_... methods to Handlers
+            if methodname.startswith('on_') and methodname not in \
                     ['on_connect', 'on_receive', 'on_disconnect', 'on_event']:
                 assert callable(method), 'handler methods have to be callable'
-                set_handler(methodname[3:], method)
+                method = Handler(methodname[3:], method)
+                setattr(endpoint, methodname, method)
 
+            if isinstance(method, Handler):
+                assert method.event not in handlers
+                handlers[method.event] = method
+
+        setattr(endpoint, 'handlers', handlers)
         return endpoint
 
 class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
@@ -62,48 +68,33 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         self.send = send
         self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
 
+        # add all available events to our model
         self.event_message_model = create_model(
             'WebSocketEventMessage',
             type=(typing.Literal[tuple(self.handlers.keys())], ...),
             __base__=WebSocketEventMessage
         )
 
-        # we need to tell the handlers that need us who we are
-        for handler in self.handlers.values():
+        # we need to tell give the handlers some bound methods
+        for event, handler in self.handlers.items():
             # check if handler.method is on of our methods
-            if self.__class__.__dict__.get(handler.method.__name__) == handler.method:
-                handler.bind_to = self
+            if handler in self.__class__.__dict__.values() \
+                   and not isinstance(handler.method, (classmethod, staticmethod)):
+                handler.bound_method = MethodType(handler.method, self)
 
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
-
-    @classmethod
-    def set_handler(
-            cls,
-            event: str,
-            method: typing.Callable,
-            ) -> None:
-        """
-        Declares a method as handler for :param:`event`
-        """
-        assert event not in ['connect', 'disconnect', 'receive'], f'{event} is reserved'
-
-        if method is None:
-            del cls.handlers[event]
-            logging.debug('Clearing handler for %s', event)
-        elif event in cls.handlers:
-            logging.warning("Overwriting handler for %s with %s", event, method)
-        else:
-            cls.handlers[event] = Handler(event, method)
 
     @classmethod
     def on_event(cls, event: str) -> typing.Callable:
         """
         Declares a method as handler for :param:`event`
         """
-        def decorator(func: typing.Callable) -> typing.Callable:
-            cls.set_handler(event, func)
-            return func
+        def decorator(func: typing.Callable) -> Handler:
+            assert event not in cls.handlers
+            handler = Handler(event, func)
+            cls.handlers[event] = handler
+            return handler
         return decorator
 
     async def dispatch(self) -> None:
@@ -151,7 +142,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         logging.debug("Calling handler for message %s", msg)
 
         # todo validate incoming data
-        response = await self.handlers[msg.type](msg)
+        response = await self.handlers[msg.type].handle(msg)
 
         if response is not None:
             #TODO validate response
