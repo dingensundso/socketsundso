@@ -45,7 +45,7 @@ Things that should/will/propably won't be implemented soon:
 
 - [x] validation of incoming data (based on type signatures of handlers)
 - [ ] tests!!!
-- [ ] response_model
+- [x] response_model
 - [ ] don't require handlers to be async
 - [ ] nice and shiny documentation
 - [ ] examples
