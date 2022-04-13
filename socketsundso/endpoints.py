@@ -170,7 +170,11 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         await self.send_json({'errors': errors})
 
     async def send_json(self, response: typing.Any) -> None:
-        """Override to handle outgoing messages"""
+        """
+        Override to handle outgoing messages
+
+        For example you could handle handler response differently based on their type.
+        """
         return await self.websocket.send_json(jsonable_encoder(response))
 
     async def on_connect(self) -> None:

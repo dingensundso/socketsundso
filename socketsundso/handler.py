@@ -4,7 +4,8 @@ import typing
 from pydantic import create_model, Extra, BaseConfig, BaseModel, Field
 from pydantic.fields import ModelField, FieldInfo
 from fastapi.dependencies.utils import get_typed_signature, get_param_field
-from fastapi.routing import serialize_response
+from pydantic.error_wrappers import ErrorWrapper, ValidationError
+from fastapi.routing import _prepare_response_content
 from fastapi.encoders import jsonable_encoder
 from fastapi.utils import create_cloned_field, create_response_field
 
@@ -64,10 +65,27 @@ class Handler:
         return await method(*args, **kwargs)
 
     async def handle(self, msg: WebSocketEventMessage) -> typing.Generator:
+        errors = []
+        field = self.response_field
         data = self.model.parse_obj(msg).dict(exclude={'type'})
-        response_content = await self(**data)
-        return await serialize_response(field = self.response_field, response_content = response_content)
+        response_content = _prepare_response_content(
+            await self(**data),
+            exclude_unset=False,
+            exclude_defaults=False,
+            exclude_none=False
+        )
 
+        if response_content is None:
+            return None
+
+        value, errors_ = field.validate(response_content, {}, loc=("response",))
+        if isinstance(errors_, ErrorWrapper):
+            errors.append(errors_)
+        elif isinstance(errors_, list):
+            errors.extend(errors_)
+        if errors:
+            raise ValidationError(errors, field.type_)
+        return value
 
 def on_event(event: str, response_model = None) -> typing.Callable:
     """
