@@ -10,7 +10,7 @@ from starlette import status
 from starlette.types import Receive, Scope, Send
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
-from pydantic import ValidationError, create_model
+from pydantic import ValidationError, create_model, BaseModel
 from fastapi.encoders import jsonable_encoder
 
 from .models import WebSocketEventMessage
@@ -86,7 +86,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         return self.dispatch().__await__()
 
     @classmethod
-    def on_event(cls, event: str, response_model = None) -> typing.Callable:
+    def on_event(cls, event: str, response_model: typing.Type[BaseModel] | None = None) -> typing.Callable:
         """
         Declares a method as handler for :param:`event`
         """

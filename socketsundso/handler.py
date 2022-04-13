@@ -16,12 +16,11 @@ class Handler:
     Class representation of a handler. It holds information about the handler, e.g. input model
     (based on :class:`pydantic.BaseModel`), :param:`event`, etc
     """
-    def __init__(self, event: str, method: typing.Callable, response_model: typing.Optional[ModelField] = None) -> None:
+    def __init__(self, event: str, method: typing.Callable, response_model: typing.Type[BaseModel] | None = None) -> None:
         self.event = event
         self.method = method
-        self.response_model = response_model
 
-        self.bound_method = None
+        self.bound_method: typing.Callable | None = None
 
         # create EventMessage model for input validation
         self.model = create_model(f'WebSocketEventMessage_{self.event}',
@@ -38,12 +37,14 @@ class Handler:
             self.model.__fields__[param_name] = field
 
         # create response_model if we didn't get one
-        if self.response_model is None:
+        if response_model is None:
             self.response_model = create_model(
                 f"Response_{event}",
                 type=event,
                 __config__=type("Config", (BaseConfig,), {'extra': Extra.allow})
             )
+        else:
+            self.response_model = response_model
 
         # ensure type is in there
         if 'type' not in self.response_model.__fields__:
@@ -60,11 +61,11 @@ class Handler:
             required=True
         )
 
-    async def __call__(self, *args, **kwargs) -> typing.Generator:
+    async def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Generator:
         method = self.method if self.bound_method is None else self.bound_method
         return await method(*args, **kwargs)
 
-    async def handle(self, msg: WebSocketEventMessage) -> typing.Generator:
+    async def handle(self, msg: WebSocketEventMessage) -> BaseModel | None:
         errors = []
         field = self.response_field
         data = self.model.parse_obj(msg).dict(exclude={'type'})
@@ -87,7 +88,7 @@ class Handler:
             raise ValidationError(errors, field.type_)
         return value
 
-def on_event(event: str, response_model = None) -> typing.Callable:
+def on_event(event: str, response_model: typing.Type[BaseModel] | None = None) -> typing.Callable:
     """
     Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
     Declares a method as handler for :param:`event`
