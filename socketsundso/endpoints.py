@@ -2,8 +2,6 @@
 import typing
 import json
 import logging
-import inspect
-from functools import partial
 from types import MethodType
 
 from starlette import status
@@ -76,7 +74,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         )
 
         # we need to tell give the handlers some bound methods
-        for event, handler in self.handlers.items():
+        for handler in self.handlers.values():
             # check if handler.method is on of our methods
             if handler in self.__class__.__dict__.values() \
                    and not isinstance(handler.method, (classmethod, staticmethod)):
@@ -86,7 +84,11 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         return self.dispatch().__await__()
 
     @classmethod
-    def on_event(cls, event: str, response_model: typing.Type[BaseModel] | None = None) -> typing.Callable:
+    def on_event(
+        cls,
+        event: str,
+        response_model: typing.Type[BaseModel] | None = None
+    ) -> typing.Callable:
         """
         Declares a method as handler for :param:`event`
         """
@@ -125,9 +127,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                     await self.send_exception(exc)
                 except WebSocketDisconnect as exc:
                     close_code = exc.code
-                #TODO remove this! don't send all exceptions to clients
                 except Exception as exc:
-                    await self.send_exception(exc)
                     raise exc
 
         except Exception as exc:
@@ -162,8 +162,6 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                 'msg': exc.detail,
                 'status_code': exc.status_code,
                 'type': type(exc).__name__}]
-        #elif isinstance(exc, WebSocketException):
-            #TODO
         else:
             errors = [{'msg': str(exc), 'type': type(exc).__name__}]
 

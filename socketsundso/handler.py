@@ -2,12 +2,11 @@
 import typing
 
 from pydantic import create_model, Extra, BaseConfig, BaseModel, Field
-from pydantic.fields import ModelField, FieldInfo
-from fastapi.dependencies.utils import get_typed_signature, get_param_field
+from pydantic.fields import FieldInfo
 from pydantic.error_wrappers import ErrorWrapper, ValidationError
+from fastapi.dependencies.utils import get_typed_signature, get_param_field
 from fastapi.routing import _prepare_response_content
-from fastapi.encoders import jsonable_encoder
-from fastapi.utils import create_cloned_field, create_response_field
+from fastapi.utils import create_response_field
 
 from .models import WebSocketEventMessage
 
@@ -16,7 +15,12 @@ class Handler:
     Class representation of a handler. It holds information about the handler, e.g. input model
     (based on :class:`pydantic.BaseModel`), :param:`event`, etc
     """
-    def __init__(self, event: str, method: typing.Callable, response_model: typing.Type[BaseModel] | None = None) -> None:
+    def __init__(
+        self,
+        event: str,
+        method: typing.Callable,
+        response_model: typing.Type[BaseModel] | None = None
+    ) -> None:
         self.event = event
         self.method = method
 
