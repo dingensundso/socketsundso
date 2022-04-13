@@ -23,6 +23,9 @@ dependencies = [
     "fastapi ==0.75.1"
 ]
 
+[project.urls]
+Home = "https://github.com/dingensundso/socketsundso"
+
 [project.optional-dependencies]
 dev = [
     "uvicorn[standard] >=0.12.0,<0.16.0",
