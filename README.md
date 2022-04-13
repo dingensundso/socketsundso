@@ -1,5 +1,7 @@
 # socketsundso
 
+**Warning**: This project is in very early development. There is no documentation, no tests, no examples and afaik no users.
+
 ## What's all this then?
 This is an opionated framework for creating WebSocket APIs based on [FastAPI](https://fastapi.tiangolo.com/), [Starlette](https://www.starlette.io/) and [pydantic](https://pydantic-docs.helpmanual.io/).
 FastAPI offers nice validation (powered by pydantic) for HTTP endpoints. This framework tries to make it easy to use all these goodies when develooping a JSON based websocket API.
@@ -51,4 +53,5 @@ Things that should/will/propably won't be implemented soon:
 - [ ] examples
 - [ ] setup.py etc for easy installation
 - [ ] some crazy scheme to make money with this (maybe add a cryptominer to some file deep within?)
-- [ ] some kind of license
+- [x] some kind of license
+- [ ] make it compatible with older python versions (at least 3.9, maybe even 3.7)
