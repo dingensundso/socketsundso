@@ -167,7 +167,8 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     async def send_json(self, response: typing.Any) -> None:
         """
-        Calls fastapi.encoders.jsonable_encoder and passes result so starlette.websockets.WebSocket.send_json
+        Calls fastapi.encoders.jsonable_encoder and passes result to
+        starlette.websockets.WebSocket.send_json
 
         Override to handle outgoing messages differently.
         For example you could handle handler response differently based on their type.
