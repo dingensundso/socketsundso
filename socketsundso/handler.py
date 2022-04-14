@@ -68,7 +68,7 @@ class Handler:
             required=True
         )
 
-    async def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Generator:
+    async def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         method = self.method if self.bound_method is None else self.bound_method
         return await method(*args, **kwargs)
 
