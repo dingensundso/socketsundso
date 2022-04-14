@@ -1,13 +1,12 @@
 """This module provides the :class:`WebSocketHandlingEndpoint`"""
 import typing
 import json
-import logging
 from types import MethodType
 
 from starlette import status
-from starlette.types import Message, Receive, Scope, Send
+from starlette.types import Receive, Scope, Send
 from starlette.exceptions import HTTPException
-from starlette.websockets import WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocket
 from pydantic import ValidationError, create_model, BaseModel
 from fastapi.encoders import jsonable_encoder
 
