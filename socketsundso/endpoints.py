@@ -5,7 +5,7 @@ import logging
 from types import MethodType
 
 from starlette import status
-from starlette.types import Receive, Scope, Send
+from starlette.types import Message, Receive, Scope, Send
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError, create_model, BaseModel
@@ -118,32 +118,29 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
         try:
             while True:
-                try:
-                    data = await self.websocket.receive_json()
-                    msg = self.event_message_model(**data)
-                    await self.handle(msg)
-                except json.decoder.JSONDecodeError as exc:
-                    await self.websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
-                    raise RuntimeError("Malformed JSON data received.") from exc
-                except ValidationError as exc:
-                    await self.send_exception(exc)
-                except WebSocketDisconnect as exc:
-                    close_code = exc.code
-                except Exception as exc:
-                    raise exc
+                message = await self.websocket.receive()
+                if message["type"] == "websocket.receive":
+                    try:
+                        data = self.event_message_model(**json.loads(message["text"]))
+                        await self.on_receive(data)
+                    except ValidationError as exc:
+                        await self.send_exception(exc)
+                    except json.decoder.JSONDecodeError:
+                        await self.websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
+                        raise RuntimeError("Malformed JSON data received.")
 
+                elif message["type"] == "websocket.disconnect":
+                    close_code = int(message.get("code", status.WS_1000_NORMAL_CLOSURE))
+                    break
         except Exception as exc:
             close_code = status.WS_1011_INTERNAL_ERROR
             raise exc
         finally:
             await self.on_disconnect(close_code)
 
-    async def handle(self, msg: WebSocketEventMessage) -> None:
-        """Calls the handler for the incoming ``msg``"""
-        assert msg.type in self.handlers, 'handle called for unknown event'
-        logging.debug("Calling handler for message %s", msg)
-
-        response = await self.handlers[msg.type].handle(msg)
+    async def on_receive(self, message: WebSocketEventMessage) -> None:
+        assert message.type in self.handlers, 'handle called for unknown event'
+        response = await self.handlers[message.type].handle(message)
 
         if response is not None:
             await self.send_json(response)
@@ -171,8 +168,9 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     async def send_json(self, response: typing.Any) -> None:
         """
-        Override to handle outgoing messages
+        Calls fastapi.encoders.jsonable_encoder and passes result so starlette.websockets.WebSocket.send_json
 
+        Override to handle outgoing messages differently.
         For example you could handle handler response differently based on their type.
         """
         return await self.websocket.send_json(jsonable_encoder(response))
