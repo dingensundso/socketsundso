@@ -1,17 +1,17 @@
 """This module provides the :class:`WebSocketHandlingEndpoint`"""
-import typing
 import json
+import typing
 from types import MethodType
 
-from starlette import status
-from starlette.types import Receive, Scope, Send
-from starlette.exceptions import HTTPException
-from starlette.websockets import WebSocket
-from pydantic import ValidationError, create_model, BaseModel
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel, ValidationError, create_model
+from starlette import status
+from starlette.exceptions import HTTPException
+from starlette.types import Receive, Scope, Send
+from starlette.websockets import WebSocket
 
-from .models import WebSocketEventMessage
 from .handler import Handler
+from .models import WebSocketEventMessage
 
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
@@ -27,9 +27,13 @@ class HandlingEndpointMeta(type):
             method = getattr(endpoint, methodname)
 
             # convert on_... methods to Handlers
-            if methodname.startswith('on_') and methodname not in \
-                    ['on_connect', 'on_receive', 'on_disconnect', 'on_event']:
-                assert callable(method), 'handler methods have to be callable'
+            if methodname.startswith("on_") and methodname not in [
+                "on_connect",
+                "on_receive",
+                "on_disconnect",
+                "on_event",
+            ]:
+                assert callable(method), "handler methods have to be callable"
                 method = Handler(methodname[3:], method)
                 setattr(endpoint, methodname, method)
 
@@ -37,7 +41,7 @@ class HandlingEndpointMeta(type):
                 assert method.event not in handlers
                 handlers[method.event] = method
 
-        setattr(endpoint, 'handlers', handlers)
+        setattr(endpoint, "handlers", handlers)
         return endpoint
 
 
@@ -58,6 +62,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
     clients connect or disconnect.
     """
+
     handlers: typing.Dict[str, Handler] = {}
 
     def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -69,16 +74,17 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
         # add all available events to our model
         self.event_message_model = create_model(
-            'WebSocketEventMessage',
+            "WebSocketEventMessage",
             type=(typing.Literal[tuple(self.handlers.keys())], ...),
-            __base__=WebSocketEventMessage
+            __base__=WebSocketEventMessage,
         )
 
         # we need to tell give the handlers some bound methods
         for handler in self.handlers.values():
             # check if handler.method is on of our methods
-            if handler in self.__class__.__dict__.values() \
-                    and not isinstance(handler.method, (classmethod, staticmethod)):
+            if handler in self.__class__.__dict__.values() and not isinstance(
+                handler.method, (classmethod, staticmethod)
+            ):
                 handler.bound_method = MethodType(handler.method, self)
 
     def __await__(self) -> typing.Generator:
@@ -86,18 +92,18 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     @classmethod
     def on_event(
-        cls,
-        event: str,
-        response_model: typing.Type[BaseModel] | None = None
+        cls, event: str, response_model: typing.Type[BaseModel] | None = None
     ) -> typing.Callable:
         """
         Declares a method as handler for :param:`event`
         """
+
         def decorator(func: typing.Callable) -> Handler:
             assert event not in cls.handlers
             handler = Handler(event, func, response_model=response_model)
             cls.handlers[event] = handler
             return handler
+
         return decorator
 
     async def dispatch(self) -> None:
@@ -138,7 +144,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
             await self.on_disconnect(close_code)
 
     async def on_receive(self, message: WebSocketEventMessage) -> None:
-        assert message.type in self.handlers, 'handle called for unknown event'
+        assert message.type in self.handlers, "handle called for unknown event"
         response = await self.handlers[message.type].handle(message)
 
         if response is not None:
@@ -156,14 +162,17 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         if isinstance(exc, ValidationError):
             errors = exc.errors()
         elif isinstance(exc, HTTPException):
-            errors = [{
-                'msg': exc.detail,
-                'status_code': exc.status_code,
-                'type': type(exc).__name__}]
+            errors = [
+                {
+                    "msg": exc.detail,
+                    "status_code": exc.status_code,
+                    "type": type(exc).__name__,
+                }
+            ]
         else:
-            errors = [{'msg': str(exc), 'type': type(exc).__name__}]
+            errors = [{"msg": str(exc), "type": type(exc).__name__}]
 
-        await self.send_json({'errors': errors})
+        await self.send_json({"errors": errors})
 
     async def send_json(self, response: typing.Any) -> None:
         """

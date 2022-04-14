@@ -13,8 +13,9 @@ class WebSocketEventMessage(BaseModel):
 
     So basically this whole class is kind of pointless.
     """
+
     type: str
 
     class Config:
         use_enum_values = True
-        extra = 'allow'
+        extra = "allow"
