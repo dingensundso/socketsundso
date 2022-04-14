@@ -2,5 +2,5 @@
 
 __version__ = "0.0.1"
 
-from .endpoints import WebSocketHandlingEndpoint
-from .handler import on_event
+from .endpoints import WebSocketHandlingEndpoint as WebSocketHandlingEndpoint
+from .handler import on_event as on_event
