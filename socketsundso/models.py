@@ -1,6 +1,7 @@
 """:module:`pydantic` models used in this project"""
 from pydantic import BaseModel
 
+
 class WebSocketEventMessage(BaseModel):
     """
     BaseModel of an incoming WebSocketEvent

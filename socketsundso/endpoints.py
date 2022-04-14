@@ -17,6 +17,7 @@ from .handler import Handler
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
 
+
 class HandlingEndpointMeta(type):
     def __new__(cls: typing.Type[type], *args: str, **kwargs: typing.Any) -> type:
         endpoint = type.__new__(cls, *args, **kwargs)
@@ -39,6 +40,7 @@ class HandlingEndpointMeta(type):
 
         setattr(endpoint, 'handlers', handlers)
         return endpoint
+
 
 class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     """
@@ -77,7 +79,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         for handler in self.handlers.values():
             # check if handler.method is on of our methods
             if handler in self.__class__.__dict__.values() \
-                   and not isinstance(handler.method, (classmethod, staticmethod)):
+                    and not isinstance(handler.method, (classmethod, staticmethod)):
                 handler.bound_method = MethodType(handler.method, self)
 
     def __await__(self) -> typing.Generator:
@@ -94,7 +96,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         """
         def decorator(func: typing.Callable) -> Handler:
             assert event not in cls.handlers
-            handler = Handler(event, func, response_model = response_model)
+            handler = Handler(event, func, response_model=response_model)
             cls.handlers[event] = handler
             return handler
         return decorator
@@ -153,7 +155,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         Override if you don't wnat to send any Exceptions to the client or want to format them
         differently.
         """
-        errors: typing.List[typing.Dict[str,typing.Any]] | typing.List[ErrorDict] # pylint: disable=used-before-assignment
+        errors: typing.List[typing.Dict[str, typing.Any]] | typing.List[ErrorDict]
 
         if isinstance(exc, ValidationError):
             errors = exc.errors()

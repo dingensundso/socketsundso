@@ -10,6 +10,7 @@ from fastapi.utils import create_response_field
 
 from .models import WebSocketEventMessage
 
+
 class Handler:
     """
     Class representation of a handler. It holds information about the handler, e.g. input model
@@ -27,8 +28,9 @@ class Handler:
         self.bound_method: typing.Callable | None = None
 
         # create EventMessage model for input validation
-        self.model = create_model(f'WebSocketEventMessage_{self.event}',
-            type=(typing.Literal[self.event],...),
+        self.model = create_model(
+            f'WebSocketEventMessage_{self.event}',
+            type=(typing.Literal[self.event], ...),
             __config__=type("Config", (BaseConfig,), {'extra': Extra.forbid})
         )
 
@@ -52,11 +54,12 @@ class Handler:
 
         # ensure type is in there
         if 'type' not in self.response_model.__fields__:
-            self.response_model.__fields__['type'] = Field(name='type',
-                    type_=str,
-                    required=False,
-                    default=event,
-                    field_info = FieldInfo(None)
+            self.response_model.__fields__['type'] = Field(
+                name='type',
+                type_=str,
+                required=False,
+                default=event,
+                field_info=FieldInfo(None)
             )
 
         self.response_field = create_response_field(
@@ -92,6 +95,7 @@ class Handler:
             raise ValidationError(errors, field.type_)
         return value
 
+
 def on_event(event: str, response_model: typing.Type[BaseModel] | None = None) -> typing.Callable:
     """
     Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
@@ -102,5 +106,5 @@ def on_event(event: str, response_model: typing.Type[BaseModel] | None = None) -
     :meth:`HandlingEndpointMeta.__new__`
     """
     def decorator(func: typing.Callable) -> Handler:
-        return Handler(event, func, response_model = response_model)
+        return Handler(event, func, response_model=response_model)
     return decorator
