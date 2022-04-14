@@ -38,6 +38,9 @@ class Message(BaseModel):
 		extra = 'forbid'
 ```
 
+You can find some examples in examples/
+
+
 ## Documentation
 There will propably be some [Sphinx](https://www.sphinx-doc.org/) based documentation at some point. For now you will have to look inside the source files for all the docstrings I wrote.
 
@@ -50,8 +53,7 @@ Things that should/will/propably won't be implemented soon:
 - [x] response_model
 - [ ] don't require handlers to be async
 - [ ] nice and shiny documentation
-- [ ] examples
-- [ ] setup.py etc for easy installation
+- [ ] more examples
 - [ ] some crazy scheme to make money with this (maybe add a cryptominer to some file deep within?)
 - [x] some kind of license
 - [ ] make it compatible with older python versions (at least 3.9, maybe even 3.7)
