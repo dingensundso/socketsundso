@@ -96,7 +96,7 @@ class Handler:
 
 
 def on_event(
-    event: str, response_model: typing.Type[BaseModel] | None = None
+    event: str | None = None, response_model: typing.Type[BaseModel] | None = None
 ) -> typing.Callable:
     """
     Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
@@ -108,6 +108,11 @@ def on_event(
     """
 
     def decorator(func: typing.Callable) -> Handler:
-        return Handler(event, func, response_model=response_model)
+        event_name = event
+        if event_name is None:
+            assert func.__name__.startswith("on_")
+            event_name = func.__name__[3:]
+
+        return Handler(event_name, func, response_model=response_model)
 
     return decorator
