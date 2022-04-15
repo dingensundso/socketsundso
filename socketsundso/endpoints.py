@@ -26,13 +26,18 @@ class HandlingEndpointMeta(type):
         for methodname in dir(endpoint):
             method = getattr(endpoint, methodname)
 
-            # convert on_... methods to Handlers
-            if methodname.startswith("on_") and methodname not in [
-                "on_connect",
-                "on_receive",
-                "on_disconnect",
-                "on_event",
-            ]:
+            # convert on_... methods to Handlers (if they aren't already a Handler)
+            if (
+                not isinstance(method, Handler)
+                and methodname.startswith("on_")
+                and methodname
+                not in [
+                    "on_connect",
+                    "on_receive",
+                    "on_disconnect",
+                    "on_event",
+                ]
+            ):
                 assert callable(method), "handler methods have to be callable"
                 method = Handler(methodname[3:], method)
                 setattr(endpoint, methodname, method)
