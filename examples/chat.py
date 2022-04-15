@@ -2,6 +2,7 @@ import typing
 
 from fastapi import FastAPI, WebSocket
 from fastapi.encoders import jsonable_encoder
+from pydantic.error_wrappers import ErrorWrapper, ValidationError
 
 from socketsundso import WebSocketHandlingEndpoint, on_event
 from socketsundso.models import WebSocketEventMessage
@@ -87,17 +88,9 @@ class MyChatApp(WebSocketHandlingEndpoint):
             (client for client in self.room.clients if client.id == to), None
         )
         if recipient is None:
-            # TODO we should raise an exception that should be handled by socketsundso
-            await self.send_json(
-                {
-                    "errors": [
-                        {
-                            "loc": ["to"],
-                            "msg": "recipient not found",
-                            "type": "value_error",
-                        }
-                    ]
-                }
+            raise ValidationError(
+                [ErrorWrapper(exc=ValueError("recipient not found"), loc=("to",))],
+                self.handlers["message"].model,
             )
         else:
             await recipient.send_json(
