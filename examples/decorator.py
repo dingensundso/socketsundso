@@ -29,33 +29,38 @@ class EchoMessage(BaseModel):
 # let's mount our endpoint to fastapi
 @app.websocket_route("/")
 class MyWebSocketApp(WebSocketHandlingEndpoint):
-    # methods starting with on_ will be automatically registered as handler
-    # in this case for type 'message'
-    async def on_message(self, msg: str) -> typing.Dict:
-        return {"msg": msg, "type": "reply"}
 
-    # alternatively you can use the on_event decorator
-    @on_event("goodbye")
+    # use the on_event decorator to register a handler
+    @on_event
     async def goodbye(self) -> None:
         # and of course you can reference self
         await self.send_json({"received_at": datetime.now()})
         await self.websocket.close()
 
+    # your handler name can start with on_ or handle_ followed by the event name
+    @on_event()
+    async def on_message(self, msg: str) -> typing.Dict:
+        return {"msg": msg, "type": "reply"}
+
     # you can even use it for staticmethods
-    @on_event("time")
+    @on_event
     @staticmethod
     async def time() -> typing.Dict:
         # but of course you won't be able to use self in here
         return {"now": datetime.now()}
 
-    # you can set the response_model with the decorator
+    # If you don't want to name your handler like the event it's handling you can give the event
+    # name as first argument to the decorator,
+    # Other arguments include response_model.
+    # For more information about all available arguments, take a look at the documentation and/or
+    # code.
     @on_event("ping", response_model=Pong)
     async def pingpong(self) -> typing.Dict:
         return {"time": datetime.now()}
 
 
 # if you want to register a function outside of the class you have to use the on_event decorator
-# of the class. Of course you can also use response_model with this one.
+# of the class. Of course you can also use all arguments with this one.
 @MyWebSocketApp.on_event("echo", response_model=EchoMessage)
 async def outside(message: str) -> typing.Dict:
     return {"message": message}
