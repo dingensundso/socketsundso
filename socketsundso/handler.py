@@ -95,15 +95,30 @@ class Handler:
         return value
 
 
+@typing.overload
+def on_event(event: typing.Callable) -> typing.Callable:
+    pass
+
+
+@typing.overload
 def on_event(
-    event_or_func: str | typing.Callable | None = None,
+    event: str | None = None,
+    response_model: typing.Type[BaseModel] | None = None,
+) -> typing.Callable:
+    pass
+
+
+def on_event(
+    event: str | typing.Callable | None = None,
     response_model: typing.Type[BaseModel] | None = None,
 ) -> typing.Callable:
     """
     Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
     Declares a method as handler for :param:`event`
-    If event is not given, the name of the function is taken as event name (but on_ or handle_ at
-    the beginning will be stripped).
+
+    :param str event: Event name. If not given the method name will be used (without starting on_ or handle_)
+    :param typing.Type[BaseModel] response_model: Return value will be parsed into this model
+
 
     Technical Note: Since it's impossible to get the class of an unbound function this decorator
     just sets some attributes on the function. The registration as handler happens in
@@ -112,8 +127,7 @@ def on_event(
 
     def decorator(func: typing.Callable) -> Handler:
         # if decorator is used without parantheses the first argument will be the function itself
-        #        event_name = event_or_func if isinstance(event_or_func, str) else None
-        event_name = None if callable(event_or_func) else event_or_func
+        event_name = None if callable(event) else event
         if event_name is None:
             if func.__name__.startswith("on_"):
                 event_name = func.__name__[3:]
@@ -128,7 +142,7 @@ def on_event(
 
         return Handler(event_name, func, response_model=response_model)
 
-    if callable(event_or_func):
-        return decorator
+    if callable(event):
+        return decorator(event)
     else:
         return decorator
