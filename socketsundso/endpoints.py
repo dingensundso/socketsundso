@@ -4,13 +4,13 @@ import typing
 from types import MethodType
 
 from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, ValidationError, create_model
+from pydantic import ValidationError, create_model
 from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket
 
-from .handler import Handler
+from .handler import Handler, on_event
 from .models import WebSocketEventMessage
 
 if typing.TYPE_CHECKING:
@@ -23,27 +23,14 @@ class HandlingEndpointMeta(type):
 
         handlers = {}
 
+        # find all handlers and add them to handlers
         for methodname in dir(endpoint):
             method = getattr(endpoint, methodname)
 
-            # convert on_... methods to Handlers (if they aren't already a Handler)
-            if (
-                not isinstance(method, Handler)
-                and methodname.startswith("on_")
-                and methodname
-                not in [
-                    "on_connect",
-                    "on_receive",
-                    "on_disconnect",
-                    "on_event",
-                ]
-            ):
-                assert callable(method), "handler methods have to be callable"
-                method = Handler(methodname[3:], method)
-                setattr(endpoint, methodname, method)
-
             if isinstance(method, Handler):
-                assert method.event not in handlers
+                assert (
+                    method.event not in handlers
+                ), f"duplicate handler for {method.event}"
                 handlers[method.event] = method
 
         setattr(endpoint, "handlers", handlers)
@@ -96,17 +83,20 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         return self.dispatch().__await__()
 
     @classmethod
-    def on_event(
-        cls, event: str, response_model: typing.Type[BaseModel] | None = None
-    ) -> typing.Callable:
+    def on_event(cls, *args: typing.Any, **kwargs: typing.Any) -> typing.Callable:
         """
-        Declares a method as handler for :param:`event`
+        Declares a method as handler.
+
+        Takes the same arguments as :meth:`on_event`
         """
 
         def decorator(func: typing.Callable) -> Handler:
-            assert event not in cls.handlers
-            handler = Handler(event, func, response_model=response_model)
-            cls.handlers[event] = handler
+            # just call the on_event decorator defined in handler.py
+            handler: Handler = on_event(*args, **kwargs)(func)
+            assert (
+                handler.event not in cls.handlers
+            ), f"duplicate handler for {handler.event}"
+            cls.handlers[handler.event] = handler
             return handler
 
         return decorator

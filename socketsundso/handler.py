@@ -96,11 +96,14 @@ class Handler:
 
 
 def on_event(
-    event: str | None = None, response_model: typing.Type[BaseModel] | None = None
+    event_or_func: str | typing.Callable | None = None,
+    response_model: typing.Type[BaseModel] | None = None,
 ) -> typing.Callable:
     """
     Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
     Declares a method as handler for :param:`event`
+    If event is not given, the name of the function is taken as event name (but on_ or handle_ at
+    the beginning will be stripped).
 
     Technical Note: Since it's impossible to get the class of an unbound function this decorator
     just sets some attributes on the function. The registration as handler happens in
@@ -108,11 +111,24 @@ def on_event(
     """
 
     def decorator(func: typing.Callable) -> Handler:
-        event_name = event
+        # if decorator is used without parantheses the first argument will be the function itself
+        #        event_name = event_or_func if isinstance(event_or_func, str) else None
+        event_name = None if callable(event_or_func) else event_or_func
         if event_name is None:
-            assert func.__name__.startswith("on_")
-            event_name = func.__name__[3:]
+            if func.__name__.startswith("on_"):
+                event_name = func.__name__[3:]
+            elif func.__name__.startswith("handle_"):
+                event_name = func.__name__[7:]
+            else:
+                event_name = func.__name__
+            assert (
+                event_name is not None
+            ), "no event given and function doesn't start with on_ or handle_"
+        assert len(event_name) > 0, "event name has to be at leas 1 character"
 
         return Handler(event_name, func, response_model=response_model)
 
-    return decorator
+    if callable(event_or_func):
+        return decorator
+    else:
+        return decorator
