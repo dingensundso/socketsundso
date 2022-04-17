@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from socketsundso import WebSocketHandlingEndpoint
+from socketsundso import WebSocketHandlingEndpoint, on_event
 
 app = FastAPI()
 
 
 @app.websocket_route("/")
 class WSApp(WebSocketHandlingEndpoint):
+    @on_event
     async def on_echo(self, msg: str):
         return {"msg": msg}
 
