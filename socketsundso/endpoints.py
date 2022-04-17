@@ -21,8 +21,8 @@ class HandlingEndpointMeta(type):
     """
     Metaclass for :class:`WebSocketHandlingEndpoint`
 
-    All this does is put every :class:`.Handler` inside of :class:`WebSocketHandlingEndpoint` into
-    :attr:`WebSocketHandlingEndpoint.handlers`
+    :class:`.HandlingEndpointMeta`:meth:`.__new__` will find all attributes of type
+    :class:`Handler` in the class and populate :attr:`.WebSocketHandlingEndpoint.handlers`
     """
 
     def __new__(cls: typing.Type[type], *args: str, **kwargs: typing.Any) -> type:

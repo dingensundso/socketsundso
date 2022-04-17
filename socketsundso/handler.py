@@ -131,15 +131,10 @@ def on_event(
     response_model: typing.Type[BaseModel] | None = None,
 ) -> typing.Callable:
     """
-    Turns a :class:`typing.Callable` into a :class:`Handler`
-    Decorator to be used in subclasses of :class:`.WebSocketHandlingEndpoint`
-    Declares a method as handler for :attr:`event`
+    Decorator to easily create a :class:`Handler`.
 
-    Takes the same parameters as :class:`Handler`
-
-    Technical Note: Since it's impossible to get the class of an unbound function this decorator
-    just sets some attributes on the function. The registration as handler happens in
-    :class:`.HandlingEndpointMeta`:meth:`.__new__`
+    If no event name is given the methodname will be used but leading `on_` or `handle_` will be
+    stripped.
     """
 
     def decorator(func: typing.Callable) -> Handler:
