@@ -1,3 +1,13 @@
+Version 0.0.4
+-------------
+
+Unreleased
+
+Changes
+^^^^^^^
+
+- reintroduce :meth:`.WebSocketHandlingEndpoint.attach_handler`
+
 Version 0.0.3
 -------------
 

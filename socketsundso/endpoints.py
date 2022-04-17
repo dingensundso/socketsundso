@@ -93,19 +93,32 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     @classmethod
     def on_event(cls, *args: typing.Any, **kwargs: typing.Any) -> typing.Callable:
         """
-        .. seealso:: Same arguments as :meth:`socketsundso.handler.on_event`.
+        .. seealso:: Same arguments as :meth:`.handler.on_event`.
         """
 
         def decorator(func: typing.Callable) -> Handler:
             # just call the on_event decorator defined in handler.py
             handler: Handler = on_event(*args, **kwargs)(func)
-            assert (
-                handler.event not in cls.handlers
-            ), f"duplicate handler for {handler.event}"
-            cls.handlers[handler.event] = handler
+            cls.attach_handler(handler)
             return handler
 
         return decorator
+
+    @classmethod
+    def attach_handler(
+        cls, handler: Handler, *, overwrite_existing: bool = False
+    ) -> None:
+        """
+        Attach a :class:`.Handler` to this class.
+
+        :raises: :exc:`AssertionError` if a :class:`.Handler` is already attached to
+                 :attr:`handler.event` and `overwrite_existing` is ``False``
+        """
+        if not overwrite_existing:
+            assert (
+                handler.event not in cls.handlers
+            ), f"duplicate handler for {handler.event}"
+        cls.handlers[handler.event] = handler
 
     async def dispatch(self) -> None:
         """
