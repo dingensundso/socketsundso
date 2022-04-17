@@ -24,7 +24,8 @@ dependencies = [
 ]
 
 [project.urls]
-Home = "https://github.com/dingensundso/socketsundso"
+repository = "https://github.com/dingensundso/socketsundso"
+documentation = "https://socketsundso.dingensundso.de/"
 
 [project.optional-dependencies]
 dev = [
