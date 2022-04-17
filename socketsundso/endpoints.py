@@ -1,4 +1,4 @@
-"""This module provides the :class:`WebSocketHandlingEndpoint`"""
+"""The WebSocket Endpoint"""
 import json
 import typing
 from types import MethodType
