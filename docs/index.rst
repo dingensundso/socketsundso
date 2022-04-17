@@ -27,3 +27,11 @@ Here you can find all the information about the function, classes and methods of
    :maxdepth: 3
 
    api
+
+Additional Notes
+----------------
+
+.. toctree::
+   :maxdepth: 3
+
+   changes
