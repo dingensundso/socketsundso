@@ -13,8 +13,14 @@ from .models import WebSocketEventMessage
 
 class Handler:
     """
-    Class representation of a handler. It holds information about the handler, e.g. input model
-    (based on :class:`pydantic.BaseModel`), :param:`event`, etc
+    Class representation of a handler. It holds information about the handler, e.g. :attr:`model`
+    (based on :class:`pydantic.BaseModel`), :attr:`event`, etc
+
+    :param str event: name of the event this handler is for
+    :param typing.Callable method: method this handler will call
+    :param pydantic.BaseModel response_model:
+        :meth:`handle` will parse the return value of :attr:`method` into this model. If no model
+        is given a default response model will be created.
     """
 
     def __init__(
@@ -29,6 +35,8 @@ class Handler:
         self.bound_method: typing.Callable | None = None
 
         # create EventMessage model for input validation
+        #: Based on :class:`.WebSocketEventMessage` with fields for the parameters of
+        #: :attr:`method`. Will be used for input validation.
         self.model = create_model(
             f"WebSocketEventMessage_{self.event}",
             type=(typing.Literal[self.event], ...),
@@ -72,6 +80,13 @@ class Handler:
         return await method(*args, **kwargs)
 
     async def handle(self, msg: WebSocketEventMessage) -> BaseModel | None:
+        """
+        Will be called by :meth:`.WebSocketHandlingEndpoint.on_receive`
+
+        :param WebSocketEventMessage msg: will be validated against :attr:`model`
+        :returns: :attr:`response_model`
+        :rtype: WebSocketEventMessage
+        """
         errors = []
         field = self.response_field
         data = self.model.parse_obj(msg).dict(exclude={"type"})
@@ -97,7 +112,10 @@ class Handler:
 
 @typing.overload
 def on_event(event: typing.Callable) -> typing.Callable:
-    pass
+    """
+    If the decorator is used without parentheses it's only argument will be the method itself.
+    :meta private:
+    """
 
 
 @typing.overload
@@ -113,16 +131,15 @@ def on_event(
     response_model: typing.Type[BaseModel] | None = None,
 ) -> typing.Callable:
     """
-    Should only be used in subclasses of :class:`WebSocketHandlingEndpoint`
-    Declares a method as handler for :param:`event`
+    Turns a :class:`typing.Callable` into a :class:`Handler`
+    Decorator to be used in subclasses of :class:`.WebSocketHandlingEndpoint`
+    Declares a method as handler for :attr:`event`
 
-    :param str event: Event name. If not given the method name will be used (without starting on_ or handle_)
-    :param typing.Type[BaseModel] response_model: Return value will be parsed into this model
-
+    Takes the same parameters as :class:`Handler`
 
     Technical Note: Since it's impossible to get the class of an unbound function this decorator
     just sets some attributes on the function. The registration as handler happens in
-    :meth:`HandlingEndpointMeta.__new__`
+    :class:`.HandlingEndpointMeta`:meth:`.__new__`
     """
 
     def decorator(func: typing.Callable) -> Handler:

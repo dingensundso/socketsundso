@@ -18,6 +18,13 @@ if typing.TYPE_CHECKING:
 
 
 class HandlingEndpointMeta(type):
+    """
+    Metaclass for :class:`WebSocketHandlingEndpoint`
+
+    All this does is put every :class:`.Handler` inside of :class:`WebSocketHandlingEndpoint` into
+    :attr:`WebSocketHandlingEndpoint.handlers`
+    """
+
     def __new__(cls: typing.Type[type], *args: str, **kwargs: typing.Any) -> type:
         endpoint = type.__new__(cls, *args, **kwargs)
 
@@ -47,8 +54,8 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     :meth:`dispatch` will call handlers based on the incoming :attr:`WebSocketEventMessage.type`.
     If the handler returns something it will be send to the client.
 
-    To register a handler name it on_[type] or decorate it with :meth:`handler` and the
-    :meth:`__init__` function will take care of it.
+    To register a method as handler decorate it with :meth:`socketsundso.handler.on_event` or
+    :meth:`on_event`.
 
 
     You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
@@ -62,6 +69,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         self.scope = scope
         self.receive = receive
         self.send = send
+        #: :class:`WebSocket` instance
         self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
 
         # add all available events to our model
@@ -85,9 +93,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     @classmethod
     def on_event(cls, *args: typing.Any, **kwargs: typing.Any) -> typing.Callable:
         """
-        Declares a method as handler.
-
-        Takes the same arguments as :meth:`on_event`
+        .. seealso:: Same arguments as :meth:`socketsundso.handler.on_event`.
         """
 
         def decorator(func: typing.Callable) -> Handler:
@@ -104,12 +110,14 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     async def dispatch(self) -> None:
         """
         Handles the lifecycle of a :class:`WebSocket` connection and calls :meth:`on_connect`,
-        the :meth:`handle` and :meth:`on_disconnect` repectively.
+        the :meth:`on_receive` and :meth:`on_disconnect` repectively.
 
-        This method will be called by starlette.
+        .. note:: This method will be called by :mod:`starlette`. You shouldn't need to think about
+                  it.
 
-        If the client sends a JSON payload that does not conform to :class:`WebSocketEventMessage`
-        or :meth:`handle` raises an :exc:`Exception` the errors will be send to the client via
+        If the client sends a JSON payload that can't be validated by :class:`WebSocketEventMessage`
+        or :meth:`on_receive` raises an :exc:`ValidationError` or
+        :exc:`json.decoder.JSONDecodeError` the errors will be send to the client via
         :meth:`send_exception`.
         """
         await self.on_connect()
@@ -139,7 +147,13 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
             await self.on_disconnect(close_code)
 
     async def on_receive(self, message: WebSocketEventMessage) -> None:
-        assert message.type in self.handlers, "handle called for unknown event"
+        """
+        Called by :meth:`dispatch` whenever a message arrives.
+
+        Calls the :meth:`Handler.handle()` for the event and calls :meth:`send_json` with the
+        response.
+        """
+        assert message.type in self.handlers, "on_receive called with unknown event"
         response = await self.handlers[message.type].handle(message)
 
         if response is not None:
@@ -171,8 +185,8 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     async def send_json(self, response: typing.Any) -> None:
         """
-        Calls fastapi.encoders.jsonable_encoder and passes result to
-        starlette.websockets.WebSocket.send_json
+        Calls :meth:`fastapi.encoders.jsonable_encoder` and passes result to
+        :meth:`starlette.websockets.WebSocket.send_json`.
 
         Override to handle outgoing messages differently.
         For example you could handle handler response differently based on their type.
@@ -180,7 +194,11 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         return await self.websocket.send_json(jsonable_encoder(response))
 
     async def on_connect(self) -> None:
-        """Override to handle an incoming websocket connection"""
+        """
+        Override to handle an incoming websocket connection
+
+        .. note:: Don't forget to call :meth:`self.websocket.accept` to accept the connection.
+        """
         await self.websocket.accept()
 
     async def on_disconnect(self, close_code: int) -> None:

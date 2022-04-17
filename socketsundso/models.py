@@ -1,4 +1,4 @@
-""":module:`pydantic` models used in this project"""
+""":mod:`pydantic` models used in this project"""
 from pydantic import BaseModel
 
 
@@ -8,10 +8,9 @@ class WebSocketEventMessage(BaseModel):
 
     All other arguments of a handler will be added dynamically.
 
-    Note: When validating incoming messages, type will be replaced with an :class:`typing.Literal`
-    for all registered event types.
-
-    So basically this whole class is kind of pointless.
+    .. note:: When validating incoming messages, type will be replaced with a
+              :class:`typing.Literal` for all registered event types.
+              So basically this whole class is kind of pointless.
     """
 
     type: str
