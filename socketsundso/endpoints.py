@@ -93,7 +93,12 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     @classmethod
     def on_event(cls, *args: typing.Any, **kwargs: typing.Any) -> typing.Callable:
         """
-        .. seealso:: Same arguments as :meth:`.handler.on_event`.
+        Creates a :class:`Handler` object and attaches it to this class.
+
+        Basically this method just calls :meth:`.handler.on_event` and :meth:`attach_handler`.
+
+        .. seealso::
+          Takes the same arguments as :meth:.`handler.on_event`.
         """
 
         def decorator(func: typing.Callable) -> Handler:

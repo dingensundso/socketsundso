@@ -135,6 +135,12 @@ def on_event(
 
     If no event name is given the methodname will be used but leading `on_` or `handle_` will be
     stripped.
+
+    .. note::
+      To attach the :class:`Handler` to a :class:`.WebSocketHandlingEndpoint` use
+      :meth:`.WebSocketHandlingEndpoint.attach_handler`.
+
+      Alternativly you could just use :meth:`.WebSocketHandlingEndpoint.on_event` to do both steps.
     """
 
     def decorator(func: typing.Callable) -> Handler:

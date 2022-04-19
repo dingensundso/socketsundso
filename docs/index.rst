@@ -17,6 +17,17 @@ socketsundso is based on `FastAPI`_, `Starlette`_ and `pydantic`_. So you should
 .. _Starlette: https://www.starlette.io/
 .. _pydantic: https://pydantic-docs.helpmanual.io/
 
+User's Guide
+------------
+
+.. warning:: Like everything in this project the `User's Guide` is an early draft.
+
+.. toctree::
+   :maxdepth: 3
+
+   foreword
+   concepts
+   tutorial
 
 API Reference
 -------------
