@@ -24,7 +24,7 @@ def return_arg_async_handler():
 
 def test_handler_init_attrs(simple_async_handler):
     assert simple_async_handler.event == "return_foo"
-    assert simple_async_handler.bound_method == None
+    assert simple_async_handler.bound_method is None
 
     assert isinstance(simple_async_handler.model, pydantic.main.ModelMetaclass)
     assert isinstance(simple_async_handler.response_model, pydantic.main.ModelMetaclass)
@@ -42,7 +42,7 @@ def test_handler_call(simple_handler):
 
 async def test_handler_async_call_with_arg(return_arg_async_handler):
     assert await return_arg_async_handler("foo") == "foo"
-    assert await return_arg_async_handler(None) == None
+    assert await return_arg_async_handler(None) is None
     assert await return_arg_async_handler(42) == 42
 
 
