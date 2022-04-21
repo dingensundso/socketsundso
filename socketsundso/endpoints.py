@@ -91,7 +91,12 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         return self.dispatch().__await__()
 
     @classmethod
-    def on_event(cls, *args: typing.Any, **kwargs: typing.Any) -> typing.Callable:
+    def on_event(
+        cls,
+        event: str | typing.Callable | None = None,
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> typing.Callable:
         """
         Creates a :class:`Handler` object and attaches it to this class.
 
@@ -103,11 +108,16 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
         def decorator(func: typing.Callable) -> Handler:
             # just call the on_event decorator defined in handler.py
-            handler: Handler = on_event(*args, **kwargs)(func)
+            handler: Handler = on_event(
+                event if not callable(event) else None, *args, **kwargs
+            )(func)
             cls.attach_handler(handler)
             return handler
 
-        return decorator
+        if callable(event):
+            return decorator(event)
+        else:
+            return decorator
 
     @classmethod
     def attach_handler(
@@ -119,6 +129,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         :raises: :exc:`AssertionError` if a :class:`.Handler` is already attached to
                  :attr:`handler.event` and `overwrite_existing` is ``False``
         """
+        assert isinstance(handler, Handler)
         if not overwrite_existing:
             assert (
                 handler.event not in cls.handlers
