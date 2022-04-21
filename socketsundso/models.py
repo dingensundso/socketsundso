@@ -1,16 +1,31 @@
-""":mod:`pydantic` models used in this project"""
+"""
+Like `FastAPI <https:fastapi.tiangolo.com>`_ :mod:`socketsundso` makes heavy use of `pydantic
+<https://pydantic-docs.helpmanual.io/>`_ models.
+
+Every message exchanged between client and server has to be some subtype of
+:class:`WebSocketEventMessage`.
+That means there has to be at least a :attr:`.type` and there can be a whole lot of data.
+
+The :attr:`.type` is how client and server decide what to do with everything also inside the object.
+In the case of :mod:`socketsundso` we will call a :class:`.Handler` that is registered in our
+:class:`.WebSocketHandlingEndpoint` for that type.
+"""
 from pydantic import BaseModel
 
 
 class WebSocketEventMessage(BaseModel):
     """
-    BaseModel of an incoming WebSocketEvent
+    BaseModel of an incoming or outgoing WebSocketEvent
 
-    All other arguments of a handler will be added dynamically.
+    Most of the time when this class is used it's just the base for another model. The models
+    are created dynamically at different places in different classes.
 
-    .. note:: When validating incoming messages, type will be replaced with a
-              :class:`typing.Literal` for all registered event types.
-              So basically this whole class is kind of pointless.
+    E.g. :class:`.WebSocketHandlingEndpoint` creates a model based on this one but
+    replaces the type for :attr:`type` with a :class:`typing.Literal` with all the registered
+    events.
+
+    :class:`.Handler` creates a model for incoming data based on this model and the signature of
+    the handler function.
     """
 
     type: str
