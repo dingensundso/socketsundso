@@ -26,9 +26,19 @@ class SomeData(BaseModel):
     y = 2
 
 
-class ModelWithSubModel(BaseModel):
-    type = "with_submodel"
-    data: SomeData
+class Foo(BaseModel):
+    count: int
+    size: float = None
+
+
+class Bar(BaseModel):
+    apple = "x"
+    banana = "y"
+
+
+class Spam(BaseModel):
+    foo: Foo
+    bars: typing.List[Bar]
 
 
 @app.websocket_route("/")
@@ -53,9 +63,9 @@ class WSApp(WebSocketHandlingEndpoint):
     async def response_model_with_type_and_data_override_type(self):
         return {"type": "foobar", "data": {"foobar": 13}}
 
-    @on_event(response_model=ModelWithSubModel)
-    async def response_model_wtih_submodel(self):
-        return {"data": {}}
+    @on_event(response_model=Spam)
+    async def response_model_with_submodel(self):
+        return dict(foo={"count": 4}, bars=[{"apple": "x1"}, {"apple": "x2"}])
 
 
 client = TestClient(app)
@@ -90,8 +100,15 @@ client = TestClient(app)
             {"type": "foobar", "data": {"foobar": 13}, "extra_val": 42},
         ),
         (
-            "response_model_wtih_submodel",
-            {"data": {"x": 1, "y": 2}, "type": "with_submodel"},
+            "response_model_with_submodel",
+            {
+                "type": "response_model_with_submodel",
+                "foo": {"count": 4, "size": None},
+                "bars": [
+                    {"apple": "x1", "banana": "y"},
+                    {"apple": "x2", "banana": "y"},
+                ],
+            },
         ),
     ],
 )
