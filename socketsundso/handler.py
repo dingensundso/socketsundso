@@ -4,9 +4,9 @@ import typing
 from fastapi.dependencies.utils import get_param_field, get_typed_signature
 from fastapi.routing import _prepare_response_content
 from fastapi.utils import create_response_field
-from pydantic import BaseConfig, BaseModel, Extra, Field, create_model
+from pydantic import BaseConfig, BaseModel, Extra, create_model
 from pydantic.error_wrappers import ErrorWrapper, ValidationError
-from pydantic.fields import FieldInfo
+from pydantic.fields import ModelField
 
 from .models import WebSocketEventMessage
 
@@ -63,12 +63,13 @@ class Handler:
 
         # ensure type is in there
         if "type" not in self.response_model.__fields__:
-            self.response_model.__fields__["type"] = Field(
+            self.response_model.__fields__["type"] = ModelField(
                 name="type",
                 type_=str,
-                required=False,
+                class_validators=None,
                 default=event,
-                field_info=FieldInfo(None),
+                required=False,
+                model_config=BaseConfig,
             )
 
         self.response_field = create_response_field(
