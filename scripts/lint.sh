@@ -2,6 +2,6 @@
 set -ex
 
 mypy socketsundso examples
-flake8 socketsundso examples
-black socketsundso examples --check
-isort socketsundso examples scripts --check-only
+flake8 socketsundso examples tests
+black socketsundso examples tests --check
+isort socketsundso examples scripts tests --check-only
