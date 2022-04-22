@@ -68,6 +68,7 @@ class Handler:
             field = get_param_field(param_name=param_name, param=param)
             self.model.__fields__[param_name] = field
 
+        self.__default_response = response_model is None
         # create response_model if we didn't get one
         #: Either the supplied response_model or a default one based on :class:`.EventMessage`.
         #: But it will always contain :attr:`type`
@@ -77,16 +78,18 @@ class Handler:
             __config__=type("Config", (BaseConfig,), {"extra": Extra.allow}),
         )
 
+        self.__type_field = ModelField(
+            name="type",
+            type_=str,
+            class_validators=None,
+            default=self.event,
+            required=False,
+            model_config=BaseConfig,
+        )
+
         # ensure type is in there
         if "type" not in self.response_model.__fields__:
-            self.response_model.__fields__["type"] = ModelField(
-                name="type",
-                type_=str,
-                class_validators=None,
-                default=self.event,
-                required=False,
-                model_config=BaseConfig,
-            )
+            self.response_model.__fields__["type"] = self.__type_field
 
         self.response_field = create_response_field(
             name=f"Response_{self.event}", type_=self.response_model, required=True
@@ -118,10 +121,12 @@ class Handler:
         :raises: :class:`ValidationError`
         """
         errors = []
+        # TODO: if we didn't get response_model, but self(**data) returns a Model use this one
         field = self.response_field
         data = self.model.parse_obj(msg).dict(exclude={"type"})
+        response_data = await self(**data)
         response_content = _prepare_response_content(
-            await self(**data),
+            response_data,
             exclude_unset=False,
             exclude_defaults=False,
             exclude_none=False,
@@ -129,6 +134,16 @@ class Handler:
 
         if response_content is None:
             return None
+
+        # if we didn't get a response_model but got a model now, use it!
+        if self.__default_response and isinstance(response_data, BaseModel):
+            # make sure type is in there
+            if "type" not in response_data.__fields__:
+                response_data.__fields__["type"] = self.__type_field
+
+            field = create_response_field(
+                name=f"Response_{self.event}", type_=type(response_data), required=True
+            )
 
         value, errors_ = field.validate(response_content, {}, loc=("response",))
         if isinstance(errors_, ErrorWrapper):
