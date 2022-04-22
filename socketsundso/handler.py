@@ -109,6 +109,7 @@ class Handler:
     async def handle_event(self, msg: EventMessage) -> BaseModel | None:
         """
         Handle incoming :class:`.EventMessage`
+
         Will be called by :meth:`.WebSocketHandlingEndpoint.dispatch`
 
         :param EventMessage msg: will be validated against :attr:`model`
@@ -140,7 +141,7 @@ class Handler:
 
 
 @typing.overload
-def on_event(event: typing.Callable) -> typing.Callable:
+def event(event: typing.Callable) -> typing.Callable:
     """
     If the decorator is used without parentheses it's only argument will be the method itself.
     :meta private:
@@ -148,14 +149,14 @@ def on_event(event: typing.Callable) -> typing.Callable:
 
 
 @typing.overload
-def on_event(
+def event(
     event: str | None = None,
     response_model: typing.Type[BaseModel] | None = None,
 ) -> typing.Callable:
     pass
 
 
-def on_event(
+def event(
     event: str | typing.Callable | None = None,
     response_model: typing.Type[BaseModel] | None = None,
 ) -> typing.Callable:
@@ -166,7 +167,7 @@ def on_event(
       To attach the :class:`Handler` to a :class:`.WebSocketHandlingEndpoint` use
       :meth:`.WebSocketHandlingEndpoint.attach_handler`.
 
-      Alternativly you could just use :meth:`.WebSocketHandlingEndpoint.on_event` to do both steps.
+      Alternativly you could just use :meth:`.WebSocketHandlingEndpoint.event` to do both steps.
     """
 
     def decorator(func: typing.Callable) -> Handler:

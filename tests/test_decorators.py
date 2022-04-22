@@ -2,7 +2,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from socketsundso import WebSocketHandlingEndpoint, on_event
+from socketsundso import WebSocketHandlingEndpoint, event
 from socketsundso.handler import Handler
 
 app = FastAPI()
@@ -10,40 +10,40 @@ app = FastAPI()
 
 @app.websocket_route("/")
 class WSApp(WebSocketHandlingEndpoint):
-    @on_event
+    @event
     async def decorator_without_parantheses(self):
         return {"type": "hello_world"}
 
-    @on_event()
+    @event()
     async def decorator_with_parantheses(self):
         return {"type": "hello_world"}
 
-    @on_event("decorator_with_parentheses_event")
+    @event("decorator_with_parentheses_event")
     async def decorator_with_parantheses_and_event(self):
         return {"type": "hello_world"}
 
 
-@WSApp.on_event
+@WSApp.event
 async def class_decorator_without_parantheses():
     return {"type": "hello_world"}
 
 
-@WSApp.on_event()
+@WSApp.event()
 async def class_decorator_with_parantheses():
     return {"type": "hello_world"}
 
 
-@WSApp.on_event("class_decorator_with_parentheses_event")
+@WSApp.event("class_decorator_with_parentheses_event")
 async def class_decorator_with_parantheses_and_event():
     return {"type": "hello_world"}
 
 
-@on_event
+@event
 async def decorator_outside_class():
     return {"type": "hello_world"}
 
 
-@on_event
+@event
 async def decorator_outside_class_attached():
     return {"type": "hello_world"}
 

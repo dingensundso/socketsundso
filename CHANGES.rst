@@ -10,6 +10,8 @@ Breaking changes
 - remove :meth:`.WebSocketHandlingEndpoint.on_receive`
 - replace :meth:`.WebSocketHandlingEndpoint.send_json` with :meth:`.WebSocketHandlingEndpoint.respond`
 - rename :meth:`.Handler.handle` to :meth:`.Handler.handle_event`
+- rename :meth:`.handler.on_event` to :meth:`.handler.event`
+- rename :meth:`.WebSocketHandlingEndpoint.on_event` to :meth:`.WebSocketHandlingEndpoint.event`
 
 Other changes
 ^^^^^^^^^^^^^

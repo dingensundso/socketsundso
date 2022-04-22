@@ -8,10 +8,10 @@ For example:
 
 .. code-block:: python
 
-   from socketsundso import WebSocketHandlingEndpoint, on_event
+   from socketsundso import WebSocketHandlingEndpoint, event
 
    class MyWSApp(WebSocketHandlingEndpoint):
-     @on_event
+     @event
      async def hello_world(self):
        return {'message': 'hello_world'}
 
@@ -31,7 +31,8 @@ from starlette.exceptions import HTTPException
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket
 
-from .handler import Handler, on_event
+from .handler import Handler
+from .handler import event as event_decorator
 from .models import EventMessage
 
 if typing.TYPE_CHECKING:
@@ -75,8 +76,8 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     :meth:`dispatch` will call handlers based on the incoming :attr:`EventMessage.type`.
     If the handler returns something it will be send to the client.
 
-    To register a method as handler decorate it with :meth:`socketsundso.handler.on_event` or
-    :meth:`on_event`.
+    To register a method as handler decorate it with :meth:`socketsundso.handler.event` or
+    :meth:`event`.
 
 
     You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
@@ -112,7 +113,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         return self.dispatch().__await__()
 
     @classmethod
-    def on_event(
+    def event(
         cls,
         event: str | typing.Callable | None = None,
         *args: typing.Any,
@@ -121,15 +122,16 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         """
         Creates a :class:`Handler` object and attaches it to this class.
 
-        Basically this method just calls :meth:`.handler.on_event` and :meth:`attach_handler`.
+        Basically this method just calls :meth:`socketsundso.handler.event` and
+        :meth:`attach_handler`.
 
         .. seealso::
-          Takes the same arguments as :meth:.`handler.on_event`.
+          Takes the same arguments as :meth:.`handler.event`.
         """
 
         def decorator(func: typing.Callable) -> Handler:
-            # just call the on_event decorator defined in handler.py
-            handler: Handler = on_event(
+            # just call the event decorator defined in handler.py
+            handler: Handler = event_decorator(
                 event if not callable(event) else None, *args, **kwargs
             )(func)
             cls.attach_handler(handler)

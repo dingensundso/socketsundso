@@ -4,7 +4,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.encoders import jsonable_encoder
 from pydantic.error_wrappers import ErrorWrapper, ValidationError
 
-from socketsundso import WebSocketHandlingEndpoint, on_event
+from socketsundso import WebSocketHandlingEndpoint, event
 from socketsundso.models import EventMessage
 
 app = FastAPI()
@@ -79,7 +79,7 @@ class MyChatApp(WebSocketHandlingEndpoint):
         if len(self.room.clients) == 0:
             del rooms[self.room.id]
 
-    @on_event(response_model=BroadcastMessage)
+    @event(response_model=BroadcastMessage)
     async def on_message(self, msg: str) -> typing.Dict:
         return {"msg": msg, "sender": self.client.id}
 

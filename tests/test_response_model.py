@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from socketsundso import WebSocketHandlingEndpoint, on_event
+from socketsundso import WebSocketHandlingEndpoint, event
 from socketsundso.models import EventMessage
 
 app = FastAPI()
@@ -43,27 +43,27 @@ class Spam(BaseModel):
 
 @app.websocket_route("/")
 class WSApp(WebSocketHandlingEndpoint):
-    @on_event
+    @event
     async def default_response_model(self):
         return {"message": "hello world"}
 
-    @on_event(response_model=ModelWithType)
+    @event(response_model=ModelWithType)
     async def response_model_with_type(self):
         return {}
 
-    @on_event(response_model=ModelWithTypeAndData)
+    @event(response_model=ModelWithTypeAndData)
     async def response_model_with_type_and_data(self):
         return {"data": {"foobar": 13}}
 
-    @on_event(response_model=ModelWithTypeAndData)
+    @event(response_model=ModelWithTypeAndData)
     async def response_model_with_type_and_data_without_data(self):
         return {}
 
-    @on_event(response_model=ModelWithTypeAndData)
+    @event(response_model=ModelWithTypeAndData)
     async def response_model_with_type_and_data_override_type(self):
         return {"type": "foobar", "data": {"foobar": 13}}
 
-    @on_event(response_model=Spam)
+    @event(response_model=Spam)
     async def response_model_with_submodel(self):
         return dict(foo={"count": 4}, bars=[{"apple": "x1"}, {"apple": "x2"}])
 
