@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from socketsundso import WebSocketHandlingEndpoint, on_event
+from socketsundso.handler import Handler
 
 app = FastAPI()
 
@@ -37,6 +38,26 @@ async def class_decorator_with_parantheses_and_event():
     return {"type": "hello_world"}
 
 
+@on_event
+async def decorator_outside_class():
+    return {"type": "hello_world"}
+
+
+@on_event
+async def decorator_outside_class_attached():
+    return {"type": "hello_world"}
+
+
+async def function_without_decorator():
+    return {"type": "hello_world"}
+
+
+WSApp.attach_handler(decorator_outside_class_attached)
+WSApp.attach_handler(Handler(method=function_without_decorator))
+WSApp.attach_handler(
+    Handler(event="function_without_decorator_event", method=function_without_decorator)
+)
+
 client = TestClient(app)
 
 
@@ -49,6 +70,9 @@ client = TestClient(app)
         ("class_decorator_without_parantheses", {"type": "hello_world"}),
         ("class_decorator_with_parantheses", {"type": "hello_world"}),
         ("class_decorator_with_parentheses_event", {"type": "hello_world"}),
+        ("function_without_decorator", {"type": "hello_world"}),
+        ("function_without_decorator_event", {"type": "hello_world"}),
+        ("decorator_outside_class_attached", {"type": "hello_world"}),
     ],
 )
 def test_events(event, expected_response):
@@ -64,6 +88,7 @@ def test_events(event, expected_response):
         ("decorator_with_parantheses_and_event"),
         ("class_decorator_with_parantheses_and_event"),
         ("nonexistant"),
+        ("decorator_outside_class"),
     ],
 )
 def test_nonexistant_events(event):

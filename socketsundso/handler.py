@@ -16,7 +16,12 @@ class Handler:
     Class representation of a handler. It holds information about the handler, e.g. :attr:`model`
     (based on :class:`pydantic.BaseModel`), :attr:`event`, etc
 
-    :param str event: name of the event this handler is for
+
+
+    :param str event:
+        name of the event this handler is for
+        If no event name is given the methodname will be used but leading `on_` or `handle_` will
+        be stripped.
     :param typing.Callable method: method this handler will call
     :param pydantic.BaseModel response_model:
         :meth:`handle` will parse the return value of :attr:`method` into this model. If no model
@@ -25,12 +30,15 @@ class Handler:
 
     def __init__(
         self,
-        event: str,
-        method: typing.Callable,
+        event: str | None = None,
+        method: typing.Callable | None = None,
         response_model: typing.Type[BaseModel] | None = None,
     ) -> None:
-        self.event = event
+        assert callable(method), "method has to be callable"
+        assert not isinstance(method, Handler), "can't wrap Handler in Handler"
+
         self.method = method
+        self.event = event or self.__get_event_name()
 
         self.bound_method: typing.Callable | None = None
 
@@ -52,14 +60,11 @@ class Handler:
             self.model.__fields__[param_name] = field
 
         # create response_model if we didn't get one
-        if response_model is None:
-            self.response_model = create_model(
-                f"Response_{event}",
-                type=event,
-                __config__=type("Config", (BaseConfig,), {"extra": Extra.allow}),
-            )
-        else:
-            self.response_model = response_model
+        self.response_model = response_model or create_model(
+            f"Response_{self.event}",
+            type=self.event,
+            __config__=type("Config", (BaseConfig,), {"extra": Extra.allow}),
+        )
 
         # ensure type is in there
         if "type" not in self.response_model.__fields__:
@@ -67,7 +72,7 @@ class Handler:
                 name="type",
                 type_=str,
                 class_validators=None,
-                default=event,
+                default=self.event,
                 required=False,
                 model_config=BaseConfig,
             )
@@ -79,6 +84,16 @@ class Handler:
     async def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
         method = self.method if self.bound_method is None else self.bound_method
         return await method(*args, **kwargs)
+
+    def __get_event_name(self) -> str:
+        if self.method.__name__.startswith("on_"):
+            event_name = self.method.__name__[3:]
+        elif self.method.__name__.startswith("handle_"):
+            event_name = self.method.__name__[7:]
+        else:
+            event_name = self.method.__name__
+        assert len(event_name) > 0, "event name has to be at leas 1 character"
+        return event_name
 
     async def handle(self, msg: WebSocketEventMessage) -> BaseModel | None:
         """
@@ -134,9 +149,6 @@ def on_event(
     """
     Decorator to easily create a :class:`Handler`.
 
-    If no event name is given the methodname will be used but leading `on_` or `handle_` will be
-    stripped.
-
     .. note::
       To attach the :class:`Handler` to a :class:`.WebSocketHandlingEndpoint` use
       :meth:`.WebSocketHandlingEndpoint.attach_handler`.
@@ -145,21 +157,11 @@ def on_event(
     """
 
     def decorator(func: typing.Callable) -> Handler:
-        # if decorator is used without parantheses the first argument will be the function itself
-        event_name = None if callable(event) else event
-        if event_name is None:
-            if func.__name__.startswith("on_"):
-                event_name = func.__name__[3:]
-            elif func.__name__.startswith("handle_"):
-                event_name = func.__name__[7:]
-            else:
-                event_name = func.__name__
-            assert (
-                event_name is not None
-            ), "no event given and function doesn't start with on_ or handle_"
-        assert len(event_name) > 0, "event name has to be at leas 1 character"
-
-        return Handler(event_name, func, response_model=response_model)
+        return Handler(
+            event if not callable(event) else None,
+            func,
+            response_model=response_model,
+        )
 
     if callable(event):
         return decorator(event)
