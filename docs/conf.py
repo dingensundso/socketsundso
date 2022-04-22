@@ -52,3 +52,22 @@ html_title = f"socketsundso Documentation {release}"
 html_show_sourcelink = False
 html_use_index = False
 html_domain_indices = False
+
+html_theme_options = {
+    'description': "A WebSocket JSON API Framework based on FastAPI, pydantic and starlette",
+    'show_relbar_bottom': True,
+    'extra_nav_links': {
+        'PyPI': 'https://pypi.org/project/socketsundso/',
+        'GitHub': 'https://github.com/dingensundso/socketsundso/',
+    }
+}
+
+html_sidebars = {
+    '**': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+        'donate.html',
+    ]
+}
