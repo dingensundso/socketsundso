@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.abspath('../'))
 project = 'socketsundso'
 copyright = '2022, Markus Bach'
 author = 'Markus Bach'
-release = "0.0.3"
+release = "0.0.4"
 
 
 # -- General configuration ---------------------------------------------------

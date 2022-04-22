@@ -3,8 +3,8 @@ API
 
 .. module:: socketsundso
 
-WebSocket Endpoint
--------------------------
+WebSocket Handling Endpoint
+---------------------------
 
 .. automodule:: socketsundso.endpoints
    :members:
@@ -12,18 +12,19 @@ WebSocket Endpoint
    :show-inheritance:
 
 
-Handler
--------------------------
+Models
+------
 
-.. automodule:: socketsundso.handler
+.. automodule:: socketsundso.models
    :members:
    :undoc-members:
    :show-inheritance:
 
-Models
---------------------------
 
-.. automodule:: socketsundso.models
+Handler
+-------
+
+.. automodule:: socketsundso.handler
    :members:
    :undoc-members:
    :show-inheritance:

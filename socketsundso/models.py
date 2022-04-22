@@ -31,5 +31,9 @@ class EventMessage(BaseModel):
     type: str
 
     class Config:
+        """
+        :meta private:
+        """
+
         use_enum_values = True
         extra = "allow"

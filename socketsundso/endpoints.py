@@ -1,4 +1,25 @@
-"""The WebSocket Endpoint"""
+"""
+The WebSocket Handling Endpoint
+
+This is the heart of :mod:`socketsundso`. To create a WebSocket JSON API create a subclass of
+:class:`WebSocketHandlingEndpoint` with some :class:`.Handler` s.
+
+For example:
+
+.. code-block:: python
+
+   from socketsundso import WebSocketHandlingEndpoint, on_event
+
+   class MyWSApp(WebSocketHandlingEndpoint):
+     @on_event
+     async def hello_world(self):
+       return {'message': 'hello_world'}
+
+To use the endpoint you have to add a `starlette.routing.WebSocketRoute`_ (e.g. via
+@app.websocket_route) to your app.
+
+.. _starlette.routing.WebSocketRoute: https://www.starlette.io/routing/#websocket-routing
+"""
 import json
 import typing
 from types import MethodType

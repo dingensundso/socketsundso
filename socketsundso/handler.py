@@ -1,4 +1,11 @@
-""":class:`Handler` and related methods"""
+"""
+The :class:`Handler` is a wrapper around a function.
+
+When our app receives an :class:`.EventMessage` it will call the corresponding
+:meth:`Handler.handle` for the received :attr:`type`.
+The incoming :class:`.EventMessage` will be validated against :attr:`Handler.model` and the return
+value of :attr:`Handler.method` will be returned as :attr:`Handler.response_model`.
+"""
 import typing
 
 from fastapi.dependencies.utils import get_param_field, get_typed_signature
@@ -37,7 +44,9 @@ class Handler:
         assert callable(method), "method has to be callable"
         assert not isinstance(method, Handler), "can't wrap Handler in Handler"
 
+        #: The function that will be called when this :class:`Handler` is invoked
         self.method = method
+        #: The event this :class:`Handler` should handle
         self.event = event or self.__get_event_name()
 
         self.bound_method: typing.Callable | None = None
@@ -60,6 +69,8 @@ class Handler:
             self.model.__fields__[param_name] = field
 
         # create response_model if we didn't get one
+        #: Either the supplied response_model or a default one based on :class:`.EventMessage`.
+        #: But it will always contain :attr:`type`
         self.response_model = response_model or create_model(
             f"Response_{self.event}",
             type=self.event,
@@ -97,11 +108,13 @@ class Handler:
 
     async def handle(self, msg: EventMessage) -> BaseModel | None:
         """
+        Handle incoming :class:`.EventMessage`
         Will be called by :meth:`.WebSocketHandlingEndpoint.on_receive`
 
         :param EventMessage msg: will be validated against :attr:`model`
         :returns: :attr:`response_model`
-        :rtype: EventMessage
+        :rtype: :class:`.EventMessage`
+        :raises: :class:`ValidationError`
         """
         errors = []
         field = self.response_field

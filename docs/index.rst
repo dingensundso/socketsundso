@@ -26,7 +26,6 @@ User's Guide
    :maxdepth: 3
 
    foreword
-   concepts
    tutorial
 
 API Reference
