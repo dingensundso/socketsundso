@@ -8,7 +8,7 @@ from pydantic import BaseConfig, BaseModel, Extra, create_model
 from pydantic.error_wrappers import ErrorWrapper, ValidationError
 from pydantic.fields import ModelField
 
-from .models import WebSocketEventMessage
+from .models import EventMessage
 
 
 class Handler:
@@ -43,10 +43,10 @@ class Handler:
         self.bound_method: typing.Callable | None = None
 
         # create EventMessage model for input validation
-        #: Based on :class:`.WebSocketEventMessage` with fields for the parameters of
+        #: Based on :class:`.EventMessage` with fields for the parameters of
         #: :attr:`method`. Will be used for input validation.
         self.model = create_model(
-            f"WebSocketEventMessage_{self.event}",
+            f"EventMessage_{self.event}",
             type=(typing.Literal[self.event], ...),
             __config__=type("Config", (BaseConfig,), {"extra": Extra.forbid}),
         )
@@ -95,13 +95,13 @@ class Handler:
         assert len(event_name) > 0, "event name has to be at leas 1 character"
         return event_name
 
-    async def handle(self, msg: WebSocketEventMessage) -> BaseModel | None:
+    async def handle(self, msg: EventMessage) -> BaseModel | None:
         """
         Will be called by :meth:`.WebSocketHandlingEndpoint.on_receive`
 
-        :param WebSocketEventMessage msg: will be validated against :attr:`model`
+        :param EventMessage msg: will be validated against :attr:`model`
         :returns: :attr:`response_model`
-        :rtype: WebSocketEventMessage
+        :rtype: EventMessage
         """
         errors = []
         field = self.response_field

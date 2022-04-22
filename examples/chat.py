@@ -5,13 +5,13 @@ from fastapi.encoders import jsonable_encoder
 from pydantic.error_wrappers import ErrorWrapper, ValidationError
 
 from socketsundso import WebSocketHandlingEndpoint, on_event
-from socketsundso.models import WebSocketEventMessage
+from socketsundso.models import EventMessage
 
 app = FastAPI()
 
 
 # models
-class ChatMessage(WebSocketEventMessage):
+class ChatMessage(EventMessage):
     type = "message"
     sender: int | None
     msg: str
@@ -45,9 +45,9 @@ class ChatRoom:
         self.clients.remove(client)
         await self.broadcast({"type": "leave", "client_id": client.id})
 
-    async def broadcast(self, message: WebSocketEventMessage | typing.Dict) -> None:
+    async def broadcast(self, message: EventMessage | typing.Dict) -> None:
         if isinstance(message, dict):
-            message = WebSocketEventMessage(**message)
+            message = EventMessage(**message)
         for client in self.clients:
             await client.send_json(message)
 

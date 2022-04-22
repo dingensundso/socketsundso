@@ -6,16 +6,16 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
 from socketsundso import WebSocketHandlingEndpoint, on_event
-from socketsundso.models import WebSocketEventMessage
+from socketsundso.models import EventMessage
 
 app = FastAPI()
 
 
-class ModelWithType(WebSocketEventMessage):
+class ModelWithType(EventMessage):
     type = "custom_type"
 
 
-class ModelWithTypeAndData(WebSocketEventMessage):
+class ModelWithTypeAndData(EventMessage):
     type = "custom_type2"
     data: typing.Dict[str, typing.Any]
     extra_val: int = 42

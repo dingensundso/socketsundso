@@ -11,7 +11,7 @@ from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket
 
 from .handler import Handler, on_event
-from .models import WebSocketEventMessage
+from .models import EventMessage
 
 if typing.TYPE_CHECKING:
     from pydantic.error_wrappers import ErrorDict
@@ -49,9 +49,9 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
 
     This class is based on :class:`starlette.endpoints.WebSocketEndpoint`
-    Incoming messages have to be based on :class:`WebSocketEventMessage`
+    Incoming messages have to be based on :class:`EventMessage`
 
-    :meth:`dispatch` will call handlers based on the incoming :attr:`WebSocketEventMessage.type`.
+    :meth:`dispatch` will call handlers based on the incoming :attr:`EventMessage.type`.
     If the handler returns something it will be send to the client.
 
     To register a method as handler decorate it with :meth:`socketsundso.handler.on_event` or
@@ -74,9 +74,9 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
         # add all available events to our model
         self.event_message_model = create_model(
-            "WebSocketEventMessage",
+            "EventMessage",
             type=(typing.Literal[tuple(self.handlers.keys())], ...),
-            __base__=WebSocketEventMessage,
+            __base__=EventMessage,
         )
 
         # we need to tell give the handlers some bound methods
@@ -144,7 +144,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         .. note:: This method will be called by :mod:`starlette`. You shouldn't need to think about
                   it.
 
-        If the client sends a JSON payload that can't be validated by :class:`WebSocketEventMessage`
+        If the client sends a JSON payload that can't be validated by :class:`EventMessage`
         or :meth:`on_receive` raises an :exc:`ValidationError` or
         :exc:`json.decoder.JSONDecodeError` the errors will be send to the client via
         :meth:`send_exception`.
@@ -175,7 +175,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         finally:
             await self.on_disconnect(close_code)
 
-    async def on_receive(self, message: WebSocketEventMessage) -> None:
+    async def on_receive(self, message: EventMessage) -> None:
         """
         Called by :meth:`dispatch` whenever a message arrives.
 

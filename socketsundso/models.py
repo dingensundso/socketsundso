@@ -3,7 +3,7 @@ Like `FastAPI <https:fastapi.tiangolo.com>`_ :mod:`socketsundso` makes heavy use
 <https://pydantic-docs.helpmanual.io/>`_ models.
 
 Every message exchanged between client and server has to be some subtype of
-:class:`WebSocketEventMessage`.
+:class:`EventMessage`.
 That means there has to be at least a :attr:`.type` and there can be a whole lot of data.
 
 The :attr:`.type` is how client and server decide what to do with everything also inside the object.
@@ -13,9 +13,9 @@ In the case of :mod:`socketsundso` we will call a :class:`.Handler` that is regi
 from pydantic import BaseModel
 
 
-class WebSocketEventMessage(BaseModel):
+class EventMessage(BaseModel):
     """
-    BaseModel of an incoming or outgoing WebSocketEvent
+    BaseModel of an incoming or outgoing Event
 
     Most of the time when this class is used it's just the base for another model. The models
     are created dynamically at different places in different classes.
