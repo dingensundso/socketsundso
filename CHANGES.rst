@@ -3,10 +3,20 @@ Version 0.0.4
 
 Unreleased
 
-Changes
-^^^^^^^
+Breaking changes
+^^^^^^^^^^^^^^^^
+
+- rename :class:`.WebSocketEventMessage` to :class:`.EventMessage`
+- remove :meth:`.WebSocketHandlingEndpoint.on_receive`
+- replace :meth:`.WebSocketHandlingEndpoint.send_json` with :meth:`.WebSocketHandlingEndpoint.respond`
+- rename :meth:`.Handler.handle` to :meth:`.Handler.handle_event`
+
+Other changes
+^^^^^^^^^^^^^
 
 - reintroduce :meth:`.WebSocketHandlingEndpoint.attach_handler`
+- make :meth:`.WebSocketHandlingEndpoint.on_event` (like it was supposed to be)
+- move event name generation from :meth:`.on_event` decorator to :meth:`.Handler.__init__`
 
 Version 0.0.3
 -------------
