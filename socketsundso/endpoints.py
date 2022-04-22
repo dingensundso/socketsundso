@@ -159,7 +159,10 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                 if message["type"] == "websocket.receive":
                     try:
                         data = self.event_message_model(**json.loads(message["text"]))
-                        await self.on_receive(data)
+                        response = await self.handlers[data.type].handle(data)
+
+                        if response is not None:
+                            await self.respond(response)
                     except ValidationError as exc:
                         await self.send_exception(exc)
                     except json.decoder.JSONDecodeError:
@@ -175,22 +178,9 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         finally:
             await self.on_disconnect(close_code)
 
-    async def on_receive(self, message: EventMessage) -> None:
-        """
-        Called by :meth:`dispatch` whenever a message arrives.
-
-        Calls the :meth:`Handler.handle()` for the event and calls :meth:`send_json` with the
-        response.
-        """
-        assert message.type in self.handlers, "on_receive called with unknown event"
-        response = await self.handlers[message.type].handle(message)
-
-        if response is not None:
-            await self.send_json(response)
-
     async def send_exception(self, exc: Exception) -> None:
         """
-        Formats the ``exc`` and sends it to the client (via :meth:`send_json`)
+        Formats the ``exc`` and sends it to the client (via :meth:`respond`)
 
         Override if you don't wnat to send any Exceptions to the client or want to format them
         differently.
@@ -210,9 +200,9 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         else:
             errors = [{"msg": str(exc), "type": type(exc).__name__}]
 
-        await self.send_json({"errors": errors})
+        await self.respond({"errors": errors})
 
-    async def send_json(self, response: typing.Any) -> None:
+    async def respond(self, response: typing.Any) -> None:
         """
         Calls :meth:`fastapi.encoders.jsonable_encoder` and passes result to
         :meth:`starlette.websockets.WebSocket.send_json`.

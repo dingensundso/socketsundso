@@ -34,7 +34,7 @@ class MyWebSocketApp(WebSocketHandlingEndpoint):
     @on_event
     async def goodbye(self) -> None:
         # and of course you can reference self
-        await self.send_json({"received_at": datetime.now()})
+        await self.websocket.send_json({"received_at": datetime.now()})
         await self.websocket.close()
 
     # your handler name can start with on_ or handle_ followed by the event name
