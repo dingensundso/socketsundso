@@ -159,14 +159,16 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     async def dispatch(self) -> None:
         """
-        Handles the lifecycle of a :class:`WebSocket` connection and calls :meth:`on_connect`,
-        the :meth:`on_receive` and :meth:`on_disconnect` repectively.
+        Handles the lifecycle of a :class:`WebSocket` connection and calls :meth:`on_connect` and
+        :meth:`on_disconnect` repectively.
+        If a message is received the corresponding :meth:`Handler.handle_event` will be called and
+        the response is passed to :meth:`respond`
 
         .. note:: This method will be called by :mod:`starlette`. You shouldn't need to think about
                   it.
 
         If the client sends a JSON payload that can't be validated by :class:`EventMessage`
-        or :meth:`on_receive` raises an :exc:`ValidationError` or
+        or :meth:`.Handler.handle_event` raises an :exc:`ValidationError` or
         :exc:`json.decoder.JSONDecodeError` the errors will be send to the client via
         :meth:`send_exception`.
         """
@@ -180,7 +182,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                 if message["type"] == "websocket.receive":
                     try:
                         data = self.event_message_model(**json.loads(message["text"]))
-                        response = await self.handlers[data.type].handle(data)
+                        response = await self.handlers[data.type].handle_event(data)
 
                         if response is not None:
                             await self.respond(response)

@@ -106,10 +106,10 @@ class Handler:
         assert len(event_name) > 0, "event name has to be at leas 1 character"
         return event_name
 
-    async def handle(self, msg: EventMessage) -> BaseModel | None:
+    async def handle_event(self, msg: EventMessage) -> BaseModel | None:
         """
         Handle incoming :class:`.EventMessage`
-        Will be called by :meth:`.WebSocketHandlingEndpoint.on_receive`
+        Will be called by :meth:`.WebSocketHandlingEndpoint.dispatch`
 
         :param EventMessage msg: will be validated against :attr:`model`
         :returns: :attr:`response_model`
