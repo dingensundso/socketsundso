@@ -152,7 +152,7 @@ class Handler:
         """
         Handle incoming :class:`.EventMessage`
 
-        If :param:`method` is given use that instead of :attr:`method`
+        If `method` is given use that instead of :attr:`method`
 
         :param EventMessage msg: will be validated against :attr:`model`
         :returns: :attr:`response_model`
