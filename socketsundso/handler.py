@@ -9,12 +9,17 @@ value of :attr:`Handler.method` will be returned as :attr:`Handler.response_mode
 import typing
 from types import MethodType
 
-from fastapi.dependencies.utils import get_param_field, get_typed_signature
+from fastapi.dependencies.utils import (
+    get_param_field,
+    get_typed_signature,
+    is_coroutine_callable,
+)
 from fastapi.routing import _prepare_response_content
 from fastapi.utils import create_response_field
 from pydantic import BaseConfig, BaseModel, Extra, create_model
 from pydantic.error_wrappers import ErrorWrapper, ValidationError
 from pydantic.fields import ModelField
+from starlette.concurrency import run_in_threadpool
 
 from .models import EventMessage
 
@@ -47,6 +52,11 @@ class Handler:
 
         #: The function that will be called when this :class:`Handler` is invoked
         self.method = method
+        # if method was wrapped with staticmethod we need to check the __wrapped__ method
+        wrapped = getattr(method, "__wrapped__", None)
+        self.is_coroutine = is_coroutine_callable(
+            method if wrapped is None else wrapped
+        )
         #: The event this :class:`Handler` should handle
         self.event = event or self.__get_event_name()
 
@@ -114,7 +124,10 @@ class Handler:
                 event_message,
                 method=self.method.__get__(*args) if len(args) == 1 else None,
             )
-        return await self.method(*args, **kwargs)
+        if self.is_coroutine:
+            return await self.method(*args, **kwargs)
+        else:
+            return await run_in_threadpool(self.method, *args, **kwargs)
 
     def __get__(
         self, obj: typing.Any, type: typing.Type | None = None
@@ -150,7 +163,11 @@ class Handler:
         field = self.response_field
         data = self.model.parse_obj(event_message).dict(exclude={"type"})
         method = method or self.method
-        response_data = await method(**data)
+        response_data = (
+            await method(**data)
+            if self.is_coroutine
+            else await run_in_threadpool(method, *data)
+        )
         response_content = _prepare_response_content(
             response_data,
             exclude_unset=False,

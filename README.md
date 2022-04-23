@@ -53,7 +53,7 @@ Things that should/will/propably won't be implemented soon:
 - [x] validation of incoming data (based on type signatures of handlers)
 - [x] tests!!!
 - [x] response_model
-- [ ] don't require handlers to be async
+- [x] don't require handlers to be async
 - [x] nice and shiny documentation
 - [ ] more and better examples
 - [ ] some crazy scheme to make money with this (maybe add a cryptominer to some file deep within?)

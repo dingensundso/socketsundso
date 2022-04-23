@@ -11,7 +11,7 @@ app = FastAPI()
 @app.websocket_route("/")
 class WSApp(WebSocketHandlingEndpoint):
     @event
-    async def decorator_without_parantheses(self):
+    def decorator_without_parantheses(self):
         return {"type": "hello_world"}
 
     @event()
@@ -24,7 +24,12 @@ class WSApp(WebSocketHandlingEndpoint):
 
     @event
     @staticmethod
-    async def static_method():
+    async def static_async_method():
+        return {"type": "hello_world"}
+
+    @event
+    @staticmethod
+    def static_method():
         return {"type": "hello_world"}
 
 
