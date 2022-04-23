@@ -7,6 +7,7 @@ The incoming :class:`.EventMessage` will be validated against :attr:`Handler.mod
 value of :attr:`Handler.method` will be returned as :attr:`Handler.response_model`.
 """
 import typing
+from inspect import unwrap
 from types import MethodType
 
 from fastapi.dependencies.utils import (
@@ -52,11 +53,7 @@ class Handler:
 
         #: The function that will be called when this :class:`Handler` is invoked
         self.method = method
-        # if method was wrapped with staticmethod we need to check the __wrapped__ method
-        wrapped = getattr(method, "__wrapped__", None)
-        self.is_coroutine = is_coroutine_callable(
-            method if wrapped is None else wrapped
-        )
+        self.is_coroutine = is_coroutine_callable(unwrap(method))
         #: The event this :class:`Handler` should handle
         self.event = event or self.__get_event_name()
 
