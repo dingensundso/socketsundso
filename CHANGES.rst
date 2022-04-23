@@ -1,7 +1,18 @@
-Version 0.0.4
+Version 0.0.5
 -------------
 
-Unreleased
+Changes
+^^^^^^^
+
+- :class:`.Handler`: if we didn't get a :attr:`.response_model` but :attr:`method` returns a model use it
+- if :class:`.Handler.__call__` receives :class:`.EventMessage` as only argument (ignoring implicit self), call :meth:`.Handler.handle_event`
+- :class:`.WebSocketHandlingEndpoint` creates :attr:`.handlers` for each instance and binds :class:`Handler` s
+- :class:`.WebSocketHandlingEndpoint` uses :meth:`.Handler.__call__` instead of :meth:`.Handler.handle_event`
+- :meth:`.Handler.handle_event` has optional method attribute (used by __call__ if :class:`.Handler` is called with implicit self and :class:`.EventMessage`)
+- :attr:`.Handler.method` no longer has to be a coroutine
+
+Version 0.0.4
+-------------
 
 Breaking changes
 ^^^^^^^^^^^^^^^^

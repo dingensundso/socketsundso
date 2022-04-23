@@ -23,7 +23,7 @@ Seems simple. Doesn't it? Well here comes the magic: Let's assume we want to bui
 
 ```python
 @on_event
-async def on_message(self, message: str) -> None:
+def on_message(self, message: str) -> None:
 	print('Hey i just received a message:')
 	print(message)
 ```
