@@ -22,6 +22,11 @@ class WSApp(WebSocketHandlingEndpoint):
     async def decorator_with_parantheses_and_event(self):
         return {"type": "hello_world"}
 
+    @event
+    @staticmethod
+    async def static_method():
+        return {"type": "hello_world"}
+
 
 @WSApp.event
 async def class_decorator_without_parantheses():
@@ -73,6 +78,7 @@ client = TestClient(app)
         ("function_without_decorator", {"type": "hello_world"}),
         ("function_without_decorator_event", {"type": "hello_world"}),
         ("decorator_outside_class_attached", {"type": "hello_world"}),
+        ("static_method", {"type": "hello_world"}),
     ],
 )
 def test_events(event, expected_response):
