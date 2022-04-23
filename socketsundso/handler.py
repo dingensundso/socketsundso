@@ -7,6 +7,7 @@ The incoming :class:`.EventMessage` will be validated against :attr:`Handler.mod
 value of :attr:`Handler.method` will be returned as :attr:`Handler.response_model`.
 """
 import typing
+from types import MethodType
 
 from fastapi.dependencies.utils import get_param_field, get_typed_signature
 from fastapi.routing import _prepare_response_content
@@ -48,8 +49,6 @@ class Handler:
         self.method = method
         #: The event this :class:`Handler` should handle
         self.event = event or self.__get_event_name()
-
-        self.bound_method: typing.Callable | None = None
 
         # create EventMessage model for input validation
         #: Based on :class:`.EventMessage` with fields for the parameters of
@@ -95,9 +94,34 @@ class Handler:
             name=f"Response_{self.event}", type_=self.response_model, required=True
         )
 
-    async def __call__(self, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
-        method = self.method if self.bound_method is None else self.bound_method
-        return await method(*args, **kwargs)
+    async def __call__(
+        self,
+        *args: typing.Any,
+        event_message: EventMessage | None = None,
+        **kwargs: typing.Any,
+    ) -> typing.Any:
+        """
+        If the only keyword-argument is event_message call :meth:`handle_event`.
+
+        Otherwise just call :attr:`method`
+        """
+        if (
+            event_message is not None
+            and len(kwargs) == 0
+            and isinstance(event_message, EventMessage)
+        ):
+            return await self.handle_event(
+                event_message,
+                method=self.method.__get__(*args) if len(args) == 1 else None,
+            )
+        return await self.method(*args, **kwargs)
+
+    def __get__(
+        self, obj: typing.Any, type: typing.Type | None = None
+    ) -> typing.Union["Handler", MethodType]:
+        if obj is not None:
+            MethodType(self, obj)
+        return self
 
     def __get_event_name(self) -> str:
         if self.method.__name__.startswith("on_"):
@@ -109,11 +133,13 @@ class Handler:
         assert len(event_name) > 0, "event name has to be at leas 1 character"
         return event_name
 
-    async def handle_event(self, msg: EventMessage) -> BaseModel | None:
+    async def handle_event(
+        self, event_message: EventMessage, *, method: typing.Callable | None = None
+    ) -> BaseModel | None:
         """
         Handle incoming :class:`.EventMessage`
 
-        Will be called by :meth:`.WebSocketHandlingEndpoint.dispatch`
+        If :param:`method` is given use that instead of :attr:`method`
 
         :param EventMessage msg: will be validated against :attr:`model`
         :returns: :attr:`response_model`
@@ -121,10 +147,10 @@ class Handler:
         :raises: :class:`ValidationError`
         """
         errors = []
-        # TODO: if we didn't get response_model, but self(**data) returns a Model use this one
         field = self.response_field
-        data = self.model.parse_obj(msg).dict(exclude={"type"})
-        response_data = await self(**data)
+        data = self.model.parse_obj(event_message).dict(exclude={"type"})
+        method = method or self.method
+        response_data = await method(**data)
         response_content = _prepare_response_content(
             response_data,
             exclude_unset=False,

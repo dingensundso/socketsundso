@@ -101,13 +101,14 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
             __base__=EventMessage,
         )
 
-        # we need to tell give the handlers some bound methods
-        for handler in self.handlers.values():
+        self.handlers = {}
+        # we need to bind the handlers
+        for event, handler in self.__class__.handlers.items():
             # check if handler.method is on of our methods
-            if handler in self.__class__.__dict__.values() and not isinstance(
-                handler.method, (classmethod, staticmethod)
-            ):
-                handler.bound_method = MethodType(handler.method, self)
+            if handler in self.__class__.__dict__.values():
+                self.handlers[event] = MethodType(handler, self)  # type: ignore
+            else:
+                self.handlers[event] = handler
 
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
@@ -184,7 +185,7 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                 if message["type"] == "websocket.receive":
                     try:
                         data = self.event_message_model(**json.loads(message["text"]))
-                        response = await self.handlers[data.type].handle_event(data)
+                        response = await self.handlers[data.type](event_message=data)
 
                         if response is not None:
                             await self.respond(response)
