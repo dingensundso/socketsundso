@@ -41,7 +41,7 @@ class Spam(BaseModel):
     bars: typing.List[Bar]
 
 
-@app.websocket_route("/")
+@app.websocket("/")
 class WSApp(WebSocketHandlingEndpoint):
     @event
     async def default_response_model(self):

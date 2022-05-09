@@ -1,3 +1,20 @@
+Version 0.0.6
+-------------
+
+Unreleased
+
+Breaking Changes
+^^^^^^^^^^^^^^^^
+
+- make :class:`.WebSocketHandlingEndpoint` FastAPI router compatible (removes starlette router compability)
+
+Changes
+^^^^^^^
+
+- fix calling of :class:`.Handler` with not async method
+- add :class:`.StarletteWebSocketHandlingEndpoint`
+
+
 Version 0.0.5
 -------------
 

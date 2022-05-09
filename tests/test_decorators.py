@@ -8,7 +8,7 @@ from socketsundso.handler import Handler
 app = FastAPI()
 
 
-@app.websocket_route("/")
+@app.websocket("/")
 class WSApp(WebSocketHandlingEndpoint):
     @event
     def decorator_without_parantheses(self):

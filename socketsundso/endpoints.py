@@ -15,10 +15,10 @@ For example:
      async def hello_world(self):
        return {'message': 'hello_world'}
 
-To use the endpoint you have to add a `starlette.routing.WebSocketRoute`_ (e.g. via
-@app.websocket_route) to your app.
-
-.. _starlette.routing.WebSocketRoute: https://www.starlette.io/routing/#websocket-routing
+To be used with `fastapi.routing.APIWebSocketRoute` (e.g. via `@app.websocket` or
+`app.add_api_websocket_route`)
+If you want to use dependencies or similar you need to overwrite
+:meth:`WebSocketHandlingEndpoint.__init__`
 """
 import json
 import typing
@@ -86,14 +86,8 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     handlers: typing.Dict[str, Handler] = {}
 
-    def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        assert scope["type"] == "websocket"
-        self.scope = scope
-        self.receive = receive
-        self.send = send
-        #: :class:`WebSocket` instance
-        self.websocket = WebSocket(self.scope, receive=self.receive, send=self.send)
-
+    def __init__(self, websocket: WebSocket) -> None:
+        self.websocket = websocket
         # add all available events to our model
         self.event_message_model = create_model(
             "EventMessage",
@@ -248,3 +242,21 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     async def on_disconnect(self, close_code: int) -> None:
         """Override to handle a disconnecting websocket"""
+
+
+class StarletteWebSocketHandlingEndpoint(WebSocketHandlingEndpoint):
+    """
+    Slight variation of :class:`.WebSocketHandlingEndpoint` to be compatible with starlette's
+    router.
+
+    To use the endpoint you have to add a `starlette.routing.WebSocketRoute`_ (e.g. via
+    @app.websocket_route) to your app.
+
+    .. _starlette.routing.WebSocketRoute: https://www.starlette.io/routing/#websocket-routing
+    """
+
+    handlers: typing.Dict[str, Handler] = {}
+
+    def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        assert scope["type"] == "websocket"
+        super().__init__(websocket=WebSocket(scope, receive=receive, send=send))
