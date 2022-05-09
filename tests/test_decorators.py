@@ -32,6 +32,14 @@ class WSApp(WebSocketHandlingEndpoint):
     def static_method():
         return {"type": "hello_world"}
 
+    @event
+    async def async_with_arg(self, msg: str):
+        return {"reply": msg}
+
+    @event
+    def with_arg(self, msg: str):
+        return {"reply": msg}
+
 
 @WSApp.event
 async def class_decorator_without_parantheses():
@@ -108,3 +116,21 @@ def test_nonexistant_events(event):
         data = websocket.receive_json()
         assert "errors" in data
         assert data["errors"][0]["ctx"]["given"] == event
+
+
+@pytest.mark.parametrize(
+    "event,args,expected_response",
+    [
+        (
+            "async_with_arg",
+            {"msg": "foobar"},
+            {"type": "async_with_arg", "reply": "foobar"},
+        ),
+        ("with_arg", {"msg": "foobar"}, {"type": "with_arg", "reply": "foobar"}),
+    ],
+)
+def test_with_param(event, args, expected_response):
+    with client.websocket_connect("/") as websocket:
+        websocket.send_json({"type": event, **args})
+        data = websocket.receive_json()
+        assert data == expected_response

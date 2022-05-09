@@ -163,7 +163,7 @@ class Handler:
         response_data = (
             await method(**data)
             if self.is_coroutine
-            else await run_in_threadpool(method, *data)
+            else await run_in_threadpool(method, **data)
         )
         response_content = _prepare_response_content(
             response_data,
