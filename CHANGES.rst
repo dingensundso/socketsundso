@@ -13,6 +13,7 @@ Changes
 
 - fix calling of :class:`.Handler` with not async method
 - add :class:`.StarletteWebSocketHandlingEndpoint`
+- add py.typed (don't know why I didn't before...)
 
 
 Version 0.0.5
