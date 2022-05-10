@@ -16,9 +16,7 @@ For example:
        return {'message': 'hello_world'}
 
 To be used with `fastapi.routing.APIWebSocketRoute` (e.g. via `@app.websocket` or
-`app.add_api_websocket_route`)
-If you want to use dependencies or similar you need to overwrite
-:meth:`WebSocketHandlingEndpoint.__init__`
+`app.add_api_websocket_route`).
 """
 import json
 import typing
@@ -28,7 +26,6 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError, create_model
 from starlette import status
 from starlette.exceptions import HTTPException
-from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket
 
 from .handler import Handler
@@ -70,7 +67,10 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     """
     The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
 
-    This class is based on :class:`starlette.endpoints.WebSocketEndpoint`
+    This class is based on :class:`starlette.endpoints.WebSocketEndpoint` but by default takes a
+    :class:`fastapi.WebSocket` as argument, so it can be used with
+    :meth:`fastapi.routing.add_api_websocket_route`
+
     Incoming messages have to be based on :class:`EventMessage`
 
     :meth:`dispatch` will call handlers based on the incoming :attr:`EventMessage.type`.
@@ -82,6 +82,10 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
     clients connect or disconnect.
+
+    If you want to inject `dependencies`_ you will have to extend :meth:`__init__`.
+
+    .. _dependencies: https://fastapi.tiangolo.com/tutorial/dependencies/
     """
 
     handlers: typing.Dict[str, Handler] = {}
@@ -242,21 +246,3 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
 
     async def on_disconnect(self, close_code: int) -> None:
         """Override to handle a disconnecting websocket"""
-
-
-class StarletteWebSocketHandlingEndpoint(WebSocketHandlingEndpoint):
-    """
-    Slight variation of :class:`.WebSocketHandlingEndpoint` to be compatible with starlette's
-    router.
-
-    To use the endpoint you have to add a `starlette.routing.WebSocketRoute`_ (e.g. via
-    @app.websocket_route) to your app.
-
-    .. _starlette.routing.WebSocketRoute: https://www.starlette.io/routing/#websocket-routing
-    """
-
-    handlers: typing.Dict[str, Handler] = {}
-
-    def __init__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        assert scope["type"] == "websocket"
-        super().__init__(websocket=WebSocket(scope, receive=receive, send=send))

@@ -6,13 +6,12 @@ Unreleased
 Breaking Changes
 ^^^^^^^^^^^^^^^^
 
-- make :class:`.WebSocketHandlingEndpoint` FastAPI router compatible (removes starlette router compability)
+- make :class:`.WebSocketHandlingEndpoint` FastAPI router compatible (breaks starlette router compability)
 
 Changes
 ^^^^^^^
 
 - fix calling of :class:`.Handler` with not async method
-- add :class:`.StarletteWebSocketHandlingEndpoint`
 - add py.typed (don't know why I didn't before...)
 
 

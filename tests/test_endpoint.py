@@ -1,18 +1,18 @@
 import random
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.testclient import TestClient
 
-from socketsundso import StarletteWebSocketHandlingEndpoint, event
+from socketsundso import WebSocketHandlingEndpoint, event
 
 app = FastAPI()
 random.seed(42)
 
 
-@app.websocket_route("/")
-class WSApp(StarletteWebSocketHandlingEndpoint):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+@app.websocket("/")
+class WSApp(WebSocketHandlingEndpoint):
+    def __init__(self, websocket: WebSocket):
+        super().__init__(websocket)
         self.random_value = random.random()
 
     @event

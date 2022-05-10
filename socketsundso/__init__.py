@@ -2,8 +2,5 @@
 
 __version__ = "0.0.6.dev2"
 
-from .endpoints import (
-    StarletteWebSocketHandlingEndpoint as StarletteWebSocketHandlingEndpoint,
-)
 from .endpoints import WebSocketHandlingEndpoint as WebSocketHandlingEndpoint
 from .handler import event as event
