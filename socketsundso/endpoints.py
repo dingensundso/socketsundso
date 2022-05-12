@@ -23,7 +23,8 @@ import typing
 from types import MethodType
 
 from fastapi.encoders import jsonable_encoder
-from pydantic import ValidationError, create_model
+from pydantic import BaseModel, ValidationError, create_model
+from pydantic.errors import WrongConstantError
 from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket
@@ -33,7 +34,10 @@ from .handler import event as event_decorator
 from .models import EventMessage
 
 if typing.TYPE_CHECKING:
+    from pydantic.class_validators import ValidatorCallable
     from pydantic.error_wrappers import ErrorDict
+else:
+    ValidatorCallable = typing.Any
 
 
 class HandlingEndpointMeta(type):
@@ -95,9 +99,12 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         # add all available events to our model
         self.event_message_model = create_model(
             "EventMessage",
-            type=(typing.Literal[tuple(self.handlers.keys())], ...),
             __base__=EventMessage,
         )
+        # set custom validator so changes to self.handlers are possible
+        self.event_message_model.__fields__["type"].validators = [
+            typing.cast(ValidatorCallable, self._type_field_validator)
+        ]
 
         self.handlers = {}
         # we need to bind the handlers
@@ -107,6 +114,19 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
                 self.handlers[event] = MethodType(handler, self)  # type: ignore
             else:
                 self.handlers[event] = handler
+
+    def _type_field_validator(
+        self, cls: typing.Type[BaseModel], v: typing.Any, *attrs: typing.Any
+    ) -> str:
+        """
+        Validator for type in :attr:`event_message_model`
+
+        Checks if type is a key in :attr:`handlers`
+        """
+        if v not in self.handlers.keys():
+            raise WrongConstantError(given=v, permitted=list(self.handlers.keys()))
+        # since self.handlers has only str as keys, we can be sure v is a str
+        return typing.cast(str, v)
 
     def __await__(self) -> typing.Generator:
         return self.dispatch().__await__()
