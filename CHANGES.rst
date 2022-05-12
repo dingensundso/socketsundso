@@ -11,6 +11,8 @@ Breaking Changes
 Changes
 ^^^^^^^
 
+- add overwrite_existing to :meth:`.HandlingEndpointMeta.__new__` to allow overwriting handlers in subclasses
+- replace the Literal in :attr:`.WebSocketHandlingEndpoint.event_message_model` with a validator
 - fix calling of :class:`.Handler` with not async method
 - add py.typed (don't know why I didn't before...)
 
