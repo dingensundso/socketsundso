@@ -48,19 +48,31 @@ class HandlingEndpointMeta(type):
     :class:`Handler` in the class and populate :attr:`.WebSocketHandlingEndpoint.handlers`
     """
 
-    def __new__(cls: typing.Type[type], *args: str, **kwargs: typing.Any) -> type:
-        endpoint = type.__new__(cls, *args, **kwargs)
+    def __new__(
+        cls: typing.Type[type],
+        clsname: str,
+        bases: typing.Tuple[type],
+        attrs: typing.Dict[str, typing.Any],
+        overwrite_existing: bool = True,
+    ) -> type:
+        endpoint = type.__new__(cls, clsname, bases, attrs)
 
-        handlers = {}
+        handlers: typing.Dict[str, Handler] = {}
 
         # find all handlers and add them to handlers
         for methodname in dir(endpoint):
             method = getattr(endpoint, methodname)
 
             if isinstance(method, Handler):
-                assert (
-                    method.event not in handlers
-                ), f"duplicate handler for {method.event}"
+                if not overwrite_existing or (
+                    method.event in handlers
+                    and handlers[method.event].method.__qualname__.startswith(
+                        attrs["__qualname__"]
+                    )
+                ):
+                    assert (
+                        method.event not in handlers
+                    ), f"duplicate handler for {method.event}"
                 handlers[method.event] = method
 
         setattr(endpoint, "handlers", handlers)
