@@ -19,10 +19,17 @@ from fastapi.routing import _prepare_response_content
 from fastapi.utils import create_response_field
 from pydantic import BaseConfig, BaseModel, Extra, create_model
 from pydantic.error_wrappers import ErrorWrapper, ValidationError
+from pydantic.errors import WrongConstantError
 from pydantic.fields import ModelField
 from starlette.concurrency import run_in_threadpool
 
+from . import decorator
 from .models import EventMessage
+
+if typing.TYPE_CHECKING:
+    from pydantic.class_validators import ValidatorCallable
+else:
+    ValidatorCallable = typing.Any
 
 
 class Handler:
@@ -205,3 +212,129 @@ class Handler:
         if errors:
             raise ValidationError(errors, field.type_)
         return value
+
+
+class Dispatcher:
+    """
+    Baseclass of :class:`WebSocketHandlingEndpoint`
+
+    When creating a subclass all :class:`Handler` objects will be collected so they can be easily
+    called via :meth:'handle'.
+    """
+
+    handlers: typing.Dict[str, Handler] = {}
+
+    def __init_subclass__(
+        cls: typing.Type["Dispatcher"],
+        /,
+        overwrite_existing: bool = True,
+        **kwargs: typing.Any,
+    ) -> None:
+        super().__init_subclass__(**kwargs)
+
+        handlers = getattr(cls, "handlers", {}).copy()
+        new_handlers: typing.Dict[str, Handler] = {}
+
+        # find all handlers and add them to handlers
+        for methodname, method in cls.__dict__.items():
+            if isinstance(method, Handler):
+                if not overwrite_existing:
+                    assert (
+                        method.event not in handlers
+                    ), f"can't overwrite handler for {method.event} without overtwrite_existing"
+                assert (
+                    method.event not in new_handlers
+                ), f"duplicate handler for {method.event}"
+                new_handlers[method.event] = method
+
+        handlers.update(new_handlers)
+        cls.handlers = handlers
+
+    def __init__(self) -> None:
+        # add all available events to our model
+        self.event_message_model = create_model(
+            "EventMessage",
+            __base__=EventMessage,
+        )
+        # set custom validator so changes to self.handlers are possible
+        self.event_message_model.__fields__["type"].validators = [
+            typing.cast(ValidatorCallable, self._type_field_validator)
+        ]
+
+        self.handlers = {}
+        # we need to bind the handlers
+        for event, handler in self.__class__.handlers.items():
+            # check if handler.method is one of our methods
+            if handler.method.__name__ in dir(self) and handler == getattr(
+                self, handler.method.__name__
+            ):
+                self.handlers[event] = MethodType(handler, self)  # type: ignore
+            else:
+                self.handlers[event] = handler
+
+    def _type_field_validator(
+        self, cls: typing.Type[BaseModel], v: typing.Any, *attrs: typing.Any
+    ) -> str:
+        """
+        Validator for type in :attr:`event_message_model`
+
+        Checks if type is a key in :attr:`handlers`
+        """
+        if v not in self.handlers.keys():
+            raise WrongConstantError(given=v, permitted=list(self.handlers.keys()))
+        # since self.handlers has only str as keys, we can be sure v is a str
+        return typing.cast(str, v)
+
+    @classmethod
+    def event(
+        cls,
+        event: str | typing.Callable | None = None,
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> typing.Callable:
+        """
+        Creates a :class:`Handler` object and attaches it to this class.
+
+        Basically this method just calls :meth:`socketsundso.handler.event` and
+        :meth:`attach_handler`.
+
+        .. seealso::
+          Takes the same arguments as :meth:.`handler.event`.
+        """
+
+        def event_decorator(func: typing.Callable) -> Handler:
+            # just call the event decorator defined in handler.py
+            handler: Handler = decorator.event(
+                event if not callable(event) else None, *args, **kwargs
+            )(func)
+            cls.attach_handler(handler)
+            return handler
+
+        if callable(event):
+            return event_decorator(event)
+        else:
+            return event_decorator
+
+    @classmethod
+    def attach_handler(
+        cls, handler: Handler, *, overwrite_existing: bool = False
+    ) -> None:
+        """
+        Attach a :class:`.Handler` to this class.
+
+        :raises: :exc:`AssertionError` if a :class:`.Handler` is already attached to
+                 :attr:`handler.event` and `overwrite_existing` is ``False``
+        """
+        assert isinstance(handler, Handler)
+        if not overwrite_existing:
+            assert (
+                handler.event not in cls.handlers
+            ), f"duplicate handler for {handler.event}"
+        cls.handlers[handler.event] = handler
+
+    async def handle(self, **kwargs: typing.Any) -> EventMessage:
+        """
+        Calls the appropriate :class:`.Handler` and returns the result
+        """
+        data = self.event_message_model(**kwargs)
+        return await self.handlers[data.type](event_message=data)
