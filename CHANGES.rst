@@ -15,6 +15,7 @@ Changes
 - replace the Literal in :attr:`.WebSocketHandlingEndpoint.event_message_model` with a validator
 - fix calling of :class:`.Handler` with not async method
 - add py.typed (don't know why I didn't before...)
+- get rid of :class:`HandlingEndpointMeta` in favor of :class:`.Dispatcher`
 
 
 Version 0.0.5

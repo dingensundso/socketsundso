@@ -40,11 +40,18 @@ else:
     ValidatorCallable = typing.Any
 
 
-class HandlingEndpoint:
+class Dispatcher:
+    """
+    Baseclass of :class:`WebSocketHandlingEndpoint`
+
+    When creating a subclass all :class:`Handler` objects will be collected so they can be easily
+    called via :meth:'handle'.
+    """
+
     handlers: typing.Dict[str, Handler] = {}
 
     def __init_subclass__(
-        cls: typing.Type["HandlingEndpoint"],
+        cls: typing.Type["Dispatcher"],
         /,
         overwrite_existing: bool = True,
         **kwargs: typing.Any,
@@ -152,11 +159,14 @@ class HandlingEndpoint:
         cls.handlers[handler.event] = handler
 
     async def handle(self, **kwargs: typing.Any) -> EventMessage:
+        """
+        Calls the appropriate :class:`.Handler` and returns the result
+        """
         data = self.event_message_model(**kwargs)
         return await self.handlers[data.type](event_message=data)
 
 
-class WebSocketHandlingEndpoint(HandlingEndpoint):
+class WebSocketHandlingEndpoint(Dispatcher):
     """
     The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
 
