@@ -16,6 +16,7 @@ Changes
 - fix calling of :class:`.Handler` with not async method
 - add py.typed (don't know why I didn't before...)
 - get rid of :class:`HandlingEndpointMeta` in favor of :class:`.Dispatcher`
+- :func:`event` was moved to :mod:`decorator`
 
 
 Version 0.0.5

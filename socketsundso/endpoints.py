@@ -29,8 +29,8 @@ from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket
 
+from .decorator import event as event_decorator
 from .handler import Handler
-from .handler import event as event_decorator
 from .models import EventMessage
 
 if typing.TYPE_CHECKING:
