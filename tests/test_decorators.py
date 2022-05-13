@@ -162,6 +162,35 @@ def test_overwritten(event, expected_response):
         assert data == expected_response
 
 
+@pytest.mark.parametrize(
+    "event,expected_response",
+    [
+        ("decorator_with_parantheses", {"type": "hello_world"}),
+        ("class_decorator_without_parantheses", {"type": "hello_world"}),
+        ("class_decorator_with_parantheses", {"type": "hello_world"}),
+        ("class_decorator_with_parentheses_event", {"type": "hello_world"}),
+        ("function_without_decorator", {"type": "hello_world"}),
+        ("function_without_decorator_event", {"type": "hello_world"}),
+        ("decorator_outside_class_attached", {"type": "hello_world"}),
+        ("static_method", {"type": "hello_world"}),
+    ],
+)
+def test_subclass(event, expected_response):
+    with client.websocket_connect("/app2") as websocket:
+        websocket.send_json({"type": event})
+        data = websocket.receive_json()
+        assert data == expected_response
+
+    @app.websocket("/app3")
+    class WSApp3(WSApp2):
+        pass
+
+    with client.websocket_connect("/app3") as websocket:
+        websocket.send_json({"type": event})
+        data = websocket.receive_json()
+        assert data == expected_response
+
+
 def test_overwrite_existing_false():
     with pytest.raises(AssertionError):
 
@@ -172,13 +201,13 @@ def test_overwrite_existing_false():
 
 
 def test_overwrite_existing_true():
-    @app.websocket("/app3")
+    @app.websocket("/app4")
     class WSApp3(WSApp2, overwrite_existing=True):
         @event
         def decorator_without_parantheses(self):
             return {"type": "foobar"}
 
-    with client.websocket_connect("/app3") as websocket:
+    with client.websocket_connect("/app4") as websocket:
         websocket.send_json({"type": "decorator_without_parantheses"})
         data = websocket.receive_json()
         assert data == {"type": "foobar"}
@@ -187,7 +216,6 @@ def test_overwrite_existing_true():
 def test_overwrite_existing_doubly():
     with pytest.raises(AssertionError):
 
-        @app.websocket("/app3")
         class WSApp3(WSApp2, overwrite_existing=True):
             @event("overwrite_me")
             def method1(self):

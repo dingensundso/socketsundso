@@ -55,27 +55,27 @@ class HandlingEndpointMeta(type):
         attrs: typing.Dict[str, typing.Any],
         overwrite_existing: bool = True,
     ) -> type:
+
         endpoint = type.__new__(cls, clsname, bases, attrs)
 
-        handlers: typing.Dict[str, Handler] = {}
+        handlers = getattr(endpoint, "handlers", {}).copy()
+        new_handlers: typing.Dict[str, Handler] = {}
 
         # find all handlers and add them to handlers
-        for methodname in dir(endpoint):
-            method = getattr(endpoint, methodname)
-
+        for methodname, method in endpoint.__dict__.items():
             if isinstance(method, Handler):
-                if not overwrite_existing or (
-                    method.event in handlers
-                    and handlers[method.event].method.__qualname__.startswith(
-                        attrs["__qualname__"]
-                    )
-                ):
+                if not overwrite_existing:
                     assert (
                         method.event not in handlers
-                    ), f"duplicate handler for {method.event}"
-                handlers[method.event] = method
+                    ), f"can't overwrite handler for {method.event} without overtwrite_existing"
+                assert (
+                    method.event not in new_handlers
+                ), f"duplicate handler for {method.event}"
+                new_handlers[method.event] = method
 
+        handlers.update(new_handlers)
         setattr(endpoint, "handlers", handlers)
+
         return endpoint
 
 
@@ -121,8 +121,10 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
         self.handlers = {}
         # we need to bind the handlers
         for event, handler in self.__class__.handlers.items():
-            # check if handler.method is on of our methods
-            if handler in self.__class__.__dict__.values():
+            # check if handler.method is one of our methods
+            if handler.method.__name__ in dir(self) and handler == getattr(
+                self, handler.method.__name__
+            ):
                 self.handlers[event] = MethodType(handler, self)  # type: ignore
             else:
                 self.handlers[event] = handler
