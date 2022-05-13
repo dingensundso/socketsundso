@@ -40,35 +40,11 @@ else:
     ValidatorCallable = typing.Any
 
 
-class WebSocketHandlingEndpoint:
-    """
-    The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
-
-    This class is based on :class:`starlette.endpoints.WebSocketEndpoint` but by default takes a
-    :class:`fastapi.WebSocket` as argument, so it can be used with
-    :meth:`fastapi.routing.add_api_websocket_route`
-
-    Incoming messages have to be based on :class:`EventMessage`
-
-    :meth:`dispatch` will call handlers based on the incoming :attr:`EventMessage.type`.
-    If the handler returns something it will be send to the client.
-
-    To register a method as handler decorate it with :meth:`socketsundso.handler.event` or
-    :meth:`event`.
-
-
-    You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
-    clients connect or disconnect.
-
-    If you want to inject `dependencies`_ you will have to extend :meth:`__init__`.
-
-    .. _dependencies: https://fastapi.tiangolo.com/tutorial/dependencies/
-    """
-
+class HandlingEndpoint:
     handlers: typing.Dict[str, Handler] = {}
 
     def __init_subclass__(
-        cls: typing.Type["WebSocketHandlingEndpoint"],
+        cls: typing.Type["HandlingEndpoint"],
         /,
         overwrite_existing: bool = True,
         **kwargs: typing.Any,
@@ -93,8 +69,7 @@ class WebSocketHandlingEndpoint:
         handlers.update(new_handlers)
         cls.handlers = handlers
 
-    def __init__(self, websocket: WebSocket) -> None:
-        self.websocket = websocket
+    def __init__(self) -> None:
         # add all available events to our model
         self.event_message_model = create_model(
             "EventMessage",
@@ -128,9 +103,6 @@ class WebSocketHandlingEndpoint:
             raise WrongConstantError(given=v, permitted=list(self.handlers.keys()))
         # since self.handlers has only str as keys, we can be sure v is a str
         return typing.cast(str, v)
-
-    def __await__(self) -> typing.Generator:
-        return self.dispatch().__await__()
 
     @classmethod
     def event(
@@ -179,6 +151,43 @@ class WebSocketHandlingEndpoint:
             ), f"duplicate handler for {handler.event}"
         cls.handlers[handler.event] = handler
 
+    async def handle(self, **kwargs: typing.Any) -> typing.Any:
+        data = self.event_message_model(**kwargs)
+        return await self.handlers[data.type](event_message=data)
+
+
+class WebSocketHandlingEndpoint(HandlingEndpoint):
+    """
+    The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
+
+    This class is based on :class:`starlette.endpoints.WebSocketEndpoint` but by default takes a
+    :class:`fastapi.WebSocket` as argument, so it can be used with
+    :meth:`fastapi.routing.add_api_websocket_route`
+
+    Incoming messages have to be based on :class:`EventMessage`
+
+    :meth:`dispatch` will call handlers based on the incoming :attr:`EventMessage.type`.
+    If the handler returns something it will be send to the client.
+
+    To register a method as handler decorate it with :meth:`socketsundso.handler.event` or
+    :meth:`event`.
+
+
+    You can override :meth:`on_connect` and :meth:`on_disconnect` to change what happens when
+    clients connect or disconnect.
+
+    If you want to inject `dependencies`_ you will have to extend :meth:`__init__`.
+
+    .. _dependencies: https://fastapi.tiangolo.com/tutorial/dependencies/
+    """
+
+    def __init__(self, websocket: WebSocket) -> None:
+        self.websocket = websocket
+        super().__init__()
+
+    def __await__(self) -> typing.Generator:
+        return self.dispatch().__await__()
+
     async def dispatch(self) -> None:
         """
         Handles the lifecycle of a :class:`WebSocket` connection and calls :meth:`on_connect` and
@@ -203,8 +212,7 @@ class WebSocketHandlingEndpoint:
                 message = await self.websocket.receive()
                 if message["type"] == "websocket.receive":
                     try:
-                        data = self.event_message_model(**json.loads(message["text"]))
-                        response = await self.handlers[data.type](event_message=data)
+                        response = await self.handle(**json.loads(message["text"]))
 
                         if response is not None:
                             await self.respond(response)
