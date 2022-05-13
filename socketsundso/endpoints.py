@@ -40,46 +40,7 @@ else:
     ValidatorCallable = typing.Any
 
 
-class HandlingEndpointMeta(type):
-    """
-    Metaclass for :class:`WebSocketHandlingEndpoint`
-
-    :class:`.HandlingEndpointMeta`:meth:`.__new__` will find all attributes of type
-    :class:`Handler` in the class and populate :attr:`.WebSocketHandlingEndpoint.handlers`
-    """
-
-    def __new__(
-        cls: typing.Type[type],
-        clsname: str,
-        bases: typing.Tuple[type],
-        attrs: typing.Dict[str, typing.Any],
-        overwrite_existing: bool = True,
-    ) -> type:
-
-        endpoint = type.__new__(cls, clsname, bases, attrs)
-
-        handlers = getattr(endpoint, "handlers", {}).copy()
-        new_handlers: typing.Dict[str, Handler] = {}
-
-        # find all handlers and add them to handlers
-        for methodname, method in endpoint.__dict__.items():
-            if isinstance(method, Handler):
-                if not overwrite_existing:
-                    assert (
-                        method.event not in handlers
-                    ), f"can't overwrite handler for {method.event} without overtwrite_existing"
-                assert (
-                    method.event not in new_handlers
-                ), f"duplicate handler for {method.event}"
-                new_handlers[method.event] = method
-
-        handlers.update(new_handlers)
-        setattr(endpoint, "handlers", handlers)
-
-        return endpoint
-
-
-class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
+class WebSocketHandlingEndpoint:
     """
     The WebSocketHandlingEndpoint is a class for the creation of a simple JSON-based WebSocket API
 
@@ -105,6 +66,32 @@ class WebSocketHandlingEndpoint(metaclass=HandlingEndpointMeta):
     """
 
     handlers: typing.Dict[str, Handler] = {}
+
+    def __init_subclass__(
+        cls: typing.Type["WebSocketHandlingEndpoint"],
+        /,
+        overwrite_existing: bool = True,
+        **kwargs: typing.Any,
+    ) -> None:
+        super().__init_subclass__(**kwargs)
+
+        handlers = getattr(cls, "handlers", {}).copy()
+        new_handlers: typing.Dict[str, Handler] = {}
+
+        # find all handlers and add them to handlers
+        for methodname, method in cls.__dict__.items():
+            if isinstance(method, Handler):
+                if not overwrite_existing:
+                    assert (
+                        method.event not in handlers
+                    ), f"can't overwrite handler for {method.event} without overtwrite_existing"
+                assert (
+                    method.event not in new_handlers
+                ), f"duplicate handler for {method.event}"
+                new_handlers[method.event] = method
+
+        handlers.update(new_handlers)
+        cls.handlers = handlers
 
     def __init__(self, websocket: WebSocket) -> None:
         self.websocket = websocket
