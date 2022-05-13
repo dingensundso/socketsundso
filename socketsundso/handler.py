@@ -101,6 +101,18 @@ class Handler:
             name=f"Response_{self.event}", type_=self.response_model, required=True
         )
 
+    @typing.overload
+    async def __call__(self, event_message: EventMessage) -> EventMessage:
+        pass
+
+    @typing.overload
+    async def __call__(
+        self,
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> typing.Any:
+        pass
+
     async def __call__(
         self,
         *args: typing.Any,

@@ -151,7 +151,7 @@ class HandlingEndpoint:
             ), f"duplicate handler for {handler.event}"
         cls.handlers[handler.event] = handler
 
-    async def handle(self, **kwargs: typing.Any) -> typing.Any:
+    async def handle(self, **kwargs: typing.Any) -> EventMessage:
         data = self.event_message_model(**kwargs)
         return await self.handlers[data.type](event_message=data)
 
